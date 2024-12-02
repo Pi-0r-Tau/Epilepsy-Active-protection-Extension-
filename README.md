@@ -1,4 +1,4 @@
-# Epilepsy-Active-protection-Extension-
+# Epilepsy-Active-protection-Extension
 An extension that detects flashes in videos and applies a blackout to the video element when threshold is breached.
 
 Use at your own risk, this is buggy and not completely working. But will be updated over time.
