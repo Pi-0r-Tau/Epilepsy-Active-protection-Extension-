@@ -1,0 +1,28 @@
+{
+    "manifest_version": 3,
+    "name": "Flashing Light Detector",
+    "version": "1.0",
+    "permissions": [
+        "activeTab",
+        "declarativeNetRequest",
+        "storage",
+        "notifications"
+    ],
+    "host_permissions": [
+        "*://*/*"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": ["*://*/*"],
+            "js": ["content.js"],
+            "run_at": "document_end"
+        }
+    ],
+    "action": {
+        "default_title": "Flashing Light Detector",
+        "default_popup": "popup.html"
+    }
+}
