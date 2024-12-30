@@ -4,7 +4,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const dimmingLevelInput = document.getElementById('dimming-level');
     const blackoutCheckbox = document.getElementById('blackout');
     const status = document.getElementById('status');
-
+    
+// Save the settings when they are changed
+    function saveSettings() {
+        const threshold = thresholdInput.value;
+        const dimmingLevel = dimmingLevelInput.value;
+        const blackout = blackoutCheckbox.checked;
+        chrome.storage.sync.set({ threshold: threshold, dimmingLevel: dimmingLevel, blackout: blackout }, () => {
+            status.textContent = 'Settings saved!';
+            setTimeout(() => {
+                status.textContent = '';
+            }, 2000);
+        });
+        
     // Load the saved settings
     chrome.storage.sync.get(['threshold', 'dimmingLevel', 'blackout'], (result) => {
         if (result.threshold !== undefined) {
@@ -18,17 +30,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Save the settings when they are changed
-    function saveSettings() {
-        const threshold = thresholdInput.value;
-        const dimmingLevel = dimmingLevelInput.value;
-        const blackout = blackoutCheckbox.checked;
-        chrome.storage.sync.set({ threshold: threshold, dimmingLevel: dimmingLevel, blackout: blackout }, () => {
-            status.textContent = 'Settings saved!';
-            setTimeout(() => {
-                status.textContent = '';
-            }, 2000);
-        });
     }
 
     thresholdInput.addEventListener('input', saveSettings);
