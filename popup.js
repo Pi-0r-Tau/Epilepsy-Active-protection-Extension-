@@ -1,3 +1,4 @@
+"use strict";
 document.addEventListener('DOMContentLoaded', () => {
     const thresholdInput = document.getElementById('threshold');
     const dimmingLevelInput = document.getElementById('dimming-level');

@@ -1,3 +1,4 @@
+"use strict";
 function detectFlashingLights(videoElement, threshold = 50, frameRate = 10, bufferTime = 3, blackout = false, dimmingLevel = 50) {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d', { willReadFrequently: true });
