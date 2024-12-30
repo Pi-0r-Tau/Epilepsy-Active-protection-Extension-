@@ -9,3 +9,6 @@ There are a couple of extensions available however these require an active serve
 ## Current issues
 - Blackout is not eager enough
 - If video starts with flashing lights above threshold delay for blackout
+
+## Progress
+Testing edge cases before committing 
