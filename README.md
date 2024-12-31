@@ -2,7 +2,10 @@
 An extension that detects flashes in videos and applies a blackout to the video element when threshold is breached. Audio will be still heard, however flashes which breach a user defined threshold will initiate a blackout iframe over the youtube video player. 
 
 ## Works on:
-- YouTube
+- YouTube:
+   - Default player
+   - Full screen player
+   - Mini-player
 
 ## Disclaimer
 Use at your own risk, this is buggy and not completely working. But will be updated over time.
