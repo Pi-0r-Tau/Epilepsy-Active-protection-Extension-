@@ -4,6 +4,7 @@ An extension that detects flashes in videos and applies a blackout to the video 
 ## Works on:
 - YouTube
 
+## Disclaimer
 Use at your own risk, this is buggy and not completely working. But will be updated over time.
 
 ## Why make this?
