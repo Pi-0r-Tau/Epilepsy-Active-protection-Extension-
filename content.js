@@ -1,4 +1,5 @@
 "use strict";
+
 function detectFlashingLights(videoElement, threshold = 50, frameRate = 10, bufferTime = 3, blackout = false, dimmingLevel = 50) {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d', { willReadFrequently: true });
@@ -23,7 +24,7 @@ function detectFlashingLights(videoElement, threshold = 50, frameRate = 10, buff
     function applyBlackout() {
         videoElement.style.filter = 'brightness(0%)';
         blackoutActive = true;
-        if (blackoutTimer) clearTimeout(blackoutTimer);
+        clearTimeout(blackoutTimer);
         blackoutTimer = setTimeout(() => {
             videoElement.style.filter = '';
             blackoutActive = false;
@@ -44,27 +45,35 @@ function detectFlashingLights(videoElement, threshold = 50, frameRate = 10, buff
     function analyzeFrame() {
         if (videoElement.paused || videoElement.ended) return;
         frameCount++;
-        if (frameCount % frameRate === 0) {
-            if (canvas.width === 0 || canvas.height === 0) {
-                initializeCanvas();
-            }
-            context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-            const frame = context.getImageData(0, 0, canvas.width, canvas.height);
-            const grayFrame = new Uint8Array(canvas.width * canvas.height);
-            const grayFrameLength = grayFrame.length;
-            const frameDataLength = frame.data.length;
-            for (let i = 0; i < frameDataLength; i += 4) {
-                grayFrame[i / 4] = 0.299 * frame.data[i] + 0.587 * frame.data[i + 1] + 0.114 * frame.data[i + 2];
-            }
-            bufferFrames.push(grayFrame);
-            if (bufferFrames.length > bufferSize) {
-                bufferFrames.shift();
-            }
-            if (prevFrame) {
-                processFrameDifference(grayFrame, grayFrameLength);
-            }
-            prevFrame = grayFrame;
+        if (frameCount % frameRate !== 0) {
+            requestAnimationFrame(analyzeFrame);
+            return;
         }
+
+        if (canvas.width === 0 || canvas.height === 0) {
+            initializeCanvas();
+        }
+
+        context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+        const frame = context.getImageData(0, 0, canvas.width, canvas.height);
+        const grayFrame = new Uint8Array(canvas.width * canvas.height);
+        const grayFrameLength = grayFrame.length;
+        const frameDataLength = frame.data.length;
+
+        for (let i = 0; i < frameDataLength; i += 4) {
+            grayFrame[i / 4] = 0.299 * frame.data[i] + 0.587 * frame.data[i + 1] + 0.114 * frame.data[i + 2];
+        }
+
+        bufferFrames.push(grayFrame);
+        if (bufferFrames.length > bufferSize) {
+            bufferFrames.shift();
+        }
+
+        if (prevFrame) {
+            processFrameDifference(grayFrame, grayFrameLength);
+        }
+
+        prevFrame = grayFrame;
         requestAnimationFrame(analyzeFrame);
     }
 
@@ -85,12 +94,9 @@ function detectFlashingLights(videoElement, threshold = 50, frameRate = 10, buff
     }
 
     function resetNoFlashTimer() {
-        if (noFlashTimer) {
-            clearTimeout(noFlashTimer);
-        }
+        clearTimeout(noFlashTimer);
         noFlashTimer = setTimeout(() => {
             if (!blackoutActive) {
-                videoElement.style.filter = `brightness(${dimmingLevel}%)`;
                 graduallyUndimVideo();
             }
         }, 10000);
@@ -104,14 +110,12 @@ function detectFlashingLights(videoElement, threshold = 50, frameRate = 10, buff
             videoElement.style.filter = `brightness(${brightness}%)`;
             if (brightness >= 100) {
                 clearInterval(interval);
-                dimmed = false;
                 undimming = false;
-                console.log("Video undimmed.");
+                videoElement.style.filter = '';
             }
         }, 500);
     }
 
-    // Add event listener for the seeked event
     videoElement.addEventListener('seeked', () => {
         if (blackoutActive) {
             applyBlackout();
@@ -129,7 +133,6 @@ function detectFlashingLightsInIframe(iframe, threshold, blackout, dimmingLevel)
         console.log(`Found ${videoElements.length} video elements in iframe.`);
         videoElements.forEach(video => {
             video.addEventListener('play', () => {
-                console.log("Video started playing in iframe.");
                 detectFlashingLights(video, threshold, 10, 3, blackout, dimmingLevel);
             });
         });
@@ -147,7 +150,6 @@ chrome.storage.sync.get(['threshold', 'blackout', 'dimmingLevel'], (result) => {
     console.log(`Found ${videoElements.length} video elements.`);
     videoElements.forEach(video => {
         video.addEventListener('play', () => {
-            console.log("Video started playing.");
             detectFlashingLights(video, threshold, 10, 3, blackout, dimmingLevel);
         });
     });

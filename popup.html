@@ -1,63 +1,38 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flashing Light Protection Settings</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 10px;
-        }
-        h1 {
-            font-size: 18px;
-        }
-        label {
-            display: block;
-            margin-top: 10px;
-        }
-        input[type="number"], input[type="range"], input[type="checkbox"] {
-            width: 100%;
-            padding: 5px;
-            margin-top: 5px;
-        }
-        button {
-            margin-top: 10px;
-            padding: 10px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        .info {
-            margin-top: 20px;
-            padding: 10px;
-            background-color: #f9f9f9;
-            border: 1px solid #ddd;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Flashing Light Protection Settings</h1>
-    <label for="threshold">Detection Sensitivity (Threshold):</label>
-    <input type="number" id="threshold" min="0" max="255" value="50">
-    <label for="dimming-level">Dimming Level (%):</label>
-    <input type="range" id="dimming-level" min="0" max="100" value="50">
-    <label for="blackout">Turn Video to Black:</label>
-    <input type="checkbox" id="blackout">
-    <button id="save">Save Settings</button>
-    <p id="status"></p>
-    <div class="info">
-        <h2>About This Extension</h2>
-        <p>This extension helps protect users from flashing lights in videos by detecting rapid changes in brightness and applying a blackout filter to the video. You can adjust the detection sensitivity and dimming level, or choose to turn the video completely black when flashing lights are detected.</p>
-        <p>Settings:</p>
-        <ul>
-            <li><strong>Detection Sensitivity (Threshold):</strong> Adjust the sensitivity for detecting flashing lights. A lower value means higher sensitivity.</li>
-            <li><strong>Dimming Level (%):</strong> Set the level of dimming applied to the video when flashing lights are detected.</li>
-            <li><strong>Turn Video to Black:</strong> Enable this option to turn the video completely black when flashing lights are detected.</li>
-        </ul>
-    </div>
-    <script src="popup.js"></script>
+    <main>
+        <h1>Flashing Light Protection Settings</h1>
+        <form id="settings-form">
+            <label for="threshold">Detection Sensitivity (Threshold):</label>
+            <input type="number" id="threshold" min="0" max="255" value="50" aria-label="Detection Sensitivity (Threshold)">
+
+            <label for="dimming-level">Dimming Level (%):</label>
+            <input type="range" id="dimming-level" min="0" max="100" value="50" aria-label="Dimming Level">
+
+            <label for="blackout">Turn Video to Black:</label>
+            <input type="checkbox" id="blackout" aria-label="Turn Video to Black">
+
+            <button type="button" id="save">Save Settings</button>
+            <p id="status" role="status"></p>
+        </form>
+
+        <section class="info">
+            <h2>About This Extension</h2>
+            <p>This extension helps protect users from flashing lights in videos by detecting rapid changes in brightness and applying a blackout filter to the video. You can adjust the detection sensitivity and dimming level, or choose to turn the video completely black when flashing lights are detected.</p>
+            <p>Settings:</p>
+            <ul>
+                <li>Detection Sensitivity: Adjust the threshold for detecting flashing lights.</li>
+                <li>Dimming Level: Set the level of dimming applied to the video.</li>
+                <li>Turn Video to Black: Enable or disable the blackout feature.</li>
+            </ul>
+        </section>
+    </main>
 </body>
 </html>
