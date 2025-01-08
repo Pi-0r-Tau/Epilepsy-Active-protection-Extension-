@@ -23,7 +23,8 @@ There are a couple of extensions available however these require an active serve
 - ~~Blackout is not eager enough~~
 - ~~If video starts with flashing lights above threshold delay for blackout~~
 - Buggy loading of user's saved settings
-- Nested if loops need to be refactored. 
+- Nested if loops need to be refactored.
+- User updated settings are only working on browser refresh
 
 ## Progress
 - Works with Youtube 
