@@ -6,7 +6,8 @@
         "activeTab",
         "declarativeNetRequest",
         "storage",
-        "notifications"
+        "notifications",
+        "tabs"
     ],
     "host_permissions": [
         "*://*/*"

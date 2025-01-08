@@ -10,8 +10,12 @@
     <main>
         <h1>Flashing Light Protection Settings</h1>
         <form id="settings-form">
-            <label for="threshold">Detection Sensitivity (Threshold):</label>
-            <input type="number" id="threshold" min="0" max="255" value="50" aria-label="Detection Sensitivity (Threshold)">
+            <label for="threshold-range">Detection Sensitivity (Threshold):</label>
+            <select id="threshold-range" aria-label="Detection Sensitivity (Threshold)">
+                <option value="10">High</option>
+                <option value="50">Medium</option>
+                <option value="70">Low</option>
+            </select>
 
             <label for="dimming-level">Dimming Level (%):</label>
             <input type="range" id="dimming-level" min="0" max="100" value="50" aria-label="Dimming Level">
@@ -34,5 +38,6 @@
             </ul>
         </section>
     </main>
+    <script src="popup.js"></script>
 </body>
 </html>
