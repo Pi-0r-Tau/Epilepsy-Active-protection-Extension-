@@ -10,7 +10,7 @@ The user can chose from 3 levels of threshold sensitivity:
 - Medium:
    - 50
 - Low:
-- 
+   - 75
 
 ## Works on:
 - YouTube:
