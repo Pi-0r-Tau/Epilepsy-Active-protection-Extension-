@@ -1,13 +1,16 @@
 "use strict";
 
-function detectFlashingLights(videoElement, threshold = 50, frameRate = 10, bufferTime = 3, _blackout = false, dimmingLevel = 50) {
+const DEFAULT_THRESHOLD = 50;
+const DEFAULT_DIMMING_LEVEL = 50;
+const DEFAULT_BLACKOUT = false;
+
+function detectFlashingLights(videoElement, threshold = DEFAULT_THRESHOLD, frameRate = 10, bufferTime = 3, blackout = DEFAULT_BLACKOUT, dimmingLevel = DEFAULT_DIMMING_LEVEL) {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d', { willReadFrequently: true });
 
     function initializeCanvas() {
         canvas.width = videoElement.videoWidth || 640;
         canvas.height = videoElement.videoHeight || 360;
-        console.log(`Canvas initialized: ${canvas.width}x${canvas.height}`);
     }
 
     let prevFrame = null;
@@ -30,12 +33,10 @@ function detectFlashingLights(videoElement, threshold = 50, frameRate = 10, buff
             blackoutActive = false;
             handlePostBlackout();
         }, 5000);
-        console.log("Blackout applied.");
     }
 
     function handlePostBlackout() {
         if (flashTimestamps.length > 0) {
-            console.log("Flashes detected after blackout. Applying dimming.");
             videoElement.style.filter = `brightness(${dimmingLevel}%)`;
             dimmed = true;
             flashTimestamps = [];
@@ -60,6 +61,7 @@ function detectFlashingLights(videoElement, threshold = 50, frameRate = 10, buff
         const grayFrameLength = grayFrame.length;
         const frameDataLength = frame.data.length;
 
+        // Convert the frame to grayscale
         for (let i = 0; i < frameDataLength; i += 4) {
             grayFrame[i / 4] = 0.299 * frame.data[i] + 0.587 * frame.data[i + 1] + 0.114 * frame.data[i + 2];
         }
@@ -83,9 +85,8 @@ function detectFlashingLights(videoElement, threshold = 50, frameRate = 10, buff
             diffSum += Math.abs(grayFrame[i] - prevFrame[i]);
         }
         const meanDiff = diffSum / grayFrameLength;
-        console.log(`Mean difference: ${meanDiff}, Threshold: ${threshold}`);
         if (meanDiff >= 120 || meanDiff > threshold) {
-            console.log("Flashing light detected! Immediate blackout.");
+            console.log(`Flashing light detected! Mean difference: ${meanDiff}, Threshold: ${threshold}`);
             applyBlackout();
             flashTimestamps = [];
         } else if (undimming) {
@@ -130,7 +131,6 @@ function detectFlashingLightsInIframe(iframe, threshold, blackout, dimmingLevel)
     try {
         const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
         const videoElements = iframeDocument.querySelectorAll('video');
-        console.log(`Found ${videoElements.length} video elements in iframe.`);
         videoElements.forEach(video => {
             video.addEventListener('play', () => {
                 detectFlashingLights(video, threshold, 10, 3, blackout, dimmingLevel);
@@ -140,14 +140,6 @@ function detectFlashingLightsInIframe(iframe, threshold, blackout, dimmingLevel)
         console.error("Error accessing iframe content:", error);
     }
 }
-
-chrome.storage.sync.get(['threshold', 'blackout', 'dimmingLevel'], (result) => {
-    let threshold = result.threshold !== undefined ? parseInt(result.threshold) : 50;
-    let blackout = result.blackout !== undefined ? result.blackout : false;
-    let dimmingLevel = result.dimmingLevel !== undefined ? parseInt(result.dimmingLevel) : 50;
-    console.log(`Threshold set to: ${threshold}, Blackout: ${blackout}, Dimming Level: ${dimmingLevel}`);
-    initializeDetection(threshold, blackout, dimmingLevel);
-});
 
 function initializeDetection(threshold, blackout, dimmingLevel) {
     const videoElements = document.querySelectorAll('video');
@@ -165,21 +157,18 @@ function initializeDetection(threshold, blackout, dimmingLevel) {
     });
 }
 
+chrome.storage.sync.get(['threshold', 'blackout', 'dimmingLevel'], (result) => {
+    const threshold = result.threshold !== undefined ? parseInt(result.threshold) : DEFAULT_THRESHOLD;
+    const blackout = result.blackout !== undefined ? result.blackout : DEFAULT_BLACKOUT;
+    const dimmingLevel = result.dimmingLevel !== undefined ? parseInt(result.dimmingLevel) : DEFAULT_DIMMING_LEVEL;
+    initializeDetection(threshold, blackout, dimmingLevel);
+});
+
 // Listen for messages from the popup to update settings
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    let threshold = 50; // Default value
-    let dimmingLevel = 50; // Default value
-    let blackout = false; // Default value
-
-    if (message.threshold !== undefined) {
-        threshold = parseInt(message.threshold);
-    }
-    if (message.dimmingLevel !== undefined) {
-        dimmingLevel = parseInt(message.dimmingLevel);
-    }
-    if (message.blackout !== undefined) {
-        blackout = message.blackout;
-    }
+    const threshold = message.threshold !== undefined ? parseInt(message.threshold) : DEFAULT_THRESHOLD;
+    const dimmingLevel = message.dimmingLevel !== undefined ? parseInt(message.dimmingLevel) : DEFAULT_DIMMING_LEVEL;
+    const blackout = message.blackout !== undefined ? message.blackout : DEFAULT_BLACKOUT;
     console.log(`Updated settings: Threshold: ${threshold}, Blackout: ${blackout}, Dimming Level: ${dimmingLevel}`);
 
     // Reinitialize detection with updated settings

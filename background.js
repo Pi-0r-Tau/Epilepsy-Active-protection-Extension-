@@ -25,6 +25,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
             }
         });
     } else {
+        console.error("Invalid request:", request);
         sendResponse({ status: "error", message: "Invalid request" });
     }
     return true; // Indicate that the response will be sent asynchronously
