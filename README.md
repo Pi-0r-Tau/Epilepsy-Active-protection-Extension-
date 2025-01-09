@@ -3,7 +3,7 @@ Detects flashes in videos and applies a blackout to the video element when thres
 
 This blackout lasts 5 seconds, and this timer resets if the extension detects further flashes that breach the threshold.
 
-The user can chose from 3 levels of threshold sensitivity:
+The user can chose from 3 levels of threshold sensitivity, the lower the threshold the more sensitive the extension is to flashes:
 
 - High:
    - 10 
