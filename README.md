@@ -11,6 +11,7 @@ The user can chose from 3 levels of threshold sensitivity, the lower the thresho
    - 50
 - Low:
    - 75
+## Threshold calculation
 
 ## Works on:
 - YouTube:
