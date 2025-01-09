@@ -22,7 +22,11 @@ This is calulated by the pixel value difference between consecutive video frames
         The pixel data is converted to greyscale using the luminance formula.
 
 3. Frame buffering:
-         Th greyscale frames are stored in a buffer to keep track of recent frames.
+         The greyscale frames are stored in a buffer to keep track of recent frames.
+
+4. Frame difference:
+         For each new frame, the function processFrameDifference calculates the absolute difference between the current greyscale frame and the previous greyscale frame.
+   
       
 ## Works on:
 - YouTube:
