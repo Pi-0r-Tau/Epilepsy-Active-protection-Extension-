@@ -11,6 +11,7 @@ The user can chose from 3 levels of threshold sensitivity, the lower the thresho
    - 50
 - Low:
    - 75
+  
 ## Threshold calculation
 This is calulated by the pixel value difference between consecutive video frames and then comparing this mean difference against the threshold value. If the mean difference exceeds the threshold, this triggers a blackout to mitigate the flashing light presence in the video.
 
@@ -20,8 +21,9 @@ This is calulated by the pixel value difference between consecutive video frames
 2. Greyscale conversion:
         The pixel data is converted to greyscale using the luminance formula.
 
-3. Frame buffering 
-   
+3. Frame buffering:
+         Th greyscale frames are stored in a buffer to keep track of recent frames.
+      
 ## Works on:
 - YouTube:
    - Default player
