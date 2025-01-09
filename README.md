@@ -9,7 +9,7 @@ The user can chose from 3 levels of threshold sensitivity:
    - 10 
 - Medium:
    - 50
-- Low
+- Low:
 - 
 
 ## Works on:
