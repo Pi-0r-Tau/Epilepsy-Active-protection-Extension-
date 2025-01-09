@@ -3,6 +3,8 @@ Detects flashes in videos and applies a blackout to the video element when thres
 
 This blackout lasts 5 seconds, and this timer resets if the extension detects further flashes that breach the threshold.
 
+The user can chose from 3 levels of threshold sensitivity 
+
 ## Works on:
 - YouTube:
    - Default player
