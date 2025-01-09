@@ -29,7 +29,9 @@ This is calulated by the pixel value difference between consecutive video frames
 
 5. Mean difference:
          The sum of the difference is divided by the number of the pixels to obtain the mean difference.
-   
+
+6. Threshold comparison:
+         The mean difference is compared to the threshold value, if it exceeds the threshold value then a blackout is applied.
    
       
 ## Works on:
