@@ -17,6 +17,9 @@ This is calulated by the difference between consecutive video frames:
 1. Frame capture:
       The analyzeframe function captures video frames from the video element at a specified frame rate, it draws the current frames onto a canvas and retrieves the pixel data as an image.
 
+2. Greyscale conversion:
+        The pixel data is converted to greyscale using the luminance formula.
+   
 ## Works on:
 - YouTube:
    - Default player
