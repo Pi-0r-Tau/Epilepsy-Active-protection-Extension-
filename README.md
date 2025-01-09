@@ -12,7 +12,10 @@ The user can chose from 3 levels of threshold sensitivity, the lower the thresho
 - Low:
    - 75
 ## Threshold calculation
-This is calulated by the difference between consecutive video frames
+This is calulated by the difference between consecutive video frames:
+
+1. Frame capture:
+      The analyzeframe function captures video frames from the video element at a specified frame rate, it draws the current frames onto a canvas and retrieves the pixel data as an image.
 
 ## Works on:
 - YouTube:
