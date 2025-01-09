@@ -5,7 +5,8 @@ This blackout lasts 5 seconds, and this timer resets if the extension detects fu
 
 The user can chose from 3 levels of threshold sensitivity:
 
-- High
+- High:
+   - 10 
 - Medium
 - Low
 
