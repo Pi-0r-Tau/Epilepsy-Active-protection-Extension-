@@ -11,6 +11,8 @@ The user can chose from 3 levels of threshold sensitivity, the lower the thresho
    - 50
 - Low:
    - 75
+ 
+Currently, user settings only take effect on browser refresh - I am working on this. 
   
 ## Threshold calculation
 This is calulated by the pixel value difference between consecutive video frames and then comparing this mean difference against the threshold value. If the mean difference exceeds the threshold, this triggers a blackout to mitigate the flashing light presence in the video.
