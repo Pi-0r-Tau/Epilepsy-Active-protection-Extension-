@@ -3,25 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flashing Light Protection Settings</title>
+    <title>Epilepsy Active Protection Settings</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <main>
-        <h1>Flashing Light Protection Settings</h1>
+        <h1>Epilepsy Active Protection Settings</h1>
         <form id="settings-form">
-            <label for="threshold-range">Detection Sensitivity (Threshold):</label>
-            <select id="threshold-range" aria-label="Detection Sensitivity (Threshold)">
-                <option value="10">High</option>
-                <option value="50">Medium</option>
-                <option value="70">Low</option>
-            </select>
+            <div class="form-group">
+                <label for="threshold-range">Detection Sensitivity (Threshold):</label>
+                <select id="threshold-range" aria-label="Detection Sensitivity (Threshold)">
+                    <option value="10">High</option>
+                    <option value="50">Medium</option>
+                    <option value="70">Low</option>
+                </select>
+                <p class="description">Adjust the sensitivity for detecting flashing lights. High sensitivity detects more subtle flashes, while low sensitivity detects only strong flashes.</p>
+            </div>
 
-            <label for="dimming-level">Dimming Level (%):</label>
-            <input type="range" id="dimming-level" min="0" max="100" value="50" aria-label="Dimming Level">
+            <div class="form-group">
+                <label for="dimming-level">Dimming Level (%):</label>
+                <input type="range" id="dimming-level" min="0" max="100" value="50" aria-label="Dimming Level">
+                <p class="description">Set the level of dimming applied to the video when flashing lights are detected. A higher percentage means more dimming.</p>
+            </div>
 
-            <label for="blackout">Turn Video to Black:</label>
-            <input type="checkbox" id="blackout" aria-label="Turn Video to Black">
+            <div class="form-group">
+                <label for="blackout">Turn Video to Black:</label>
+                <input type="checkbox" id="blackout" aria-label="Turn Video to Black">
+                <p class="description">Enable this option to turn the video completely black when flashing lights are detected.</p>
+            </div>
 
             <button type="button" id="save">Save Settings</button>
             <p id="status" role="status"></p>
@@ -29,13 +38,7 @@
 
         <section class="info">
             <h2>About This Extension</h2>
-            <p>This extension helps protect users from flashing lights in videos by detecting rapid changes in brightness and applying a blackout filter to the video. You can adjust the detection sensitivity and dimming level, or choose to turn the video completely black when flashing lights are detected.</p>
-            <p>Settings:</p>
-            <ul>
-                <li>Detection Sensitivity: Adjust the threshold for detecting flashing lights.</li>
-                <li>Dimming Level: Set the level of dimming applied to the video.</li>
-                <li>Turn Video to Black: Enable or disable the blackout feature.</li>
-            </ul>
+            <p>For more information about this extension, please visit the <a href="https://github.com/Pi-0r-Tau/Epilepsy-Active-protection-Extension-" target="_blank">GitHub page</a>.</p>
         </section>
     </main>
     <script src="popup.js"></script>

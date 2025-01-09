@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "Flashing Light Detector",
+    "name": "Epilepsy Active Protection",
     "version": "1.0",
     "permissions": [
         "activeTab",
@@ -23,7 +23,7 @@
         }
     ],
     "action": {
-        "default_title": "Flashing Light Detector",
+        "default_title": "Epilepsy Active Protection",
         "default_popup": "popup.html"
     },
     "web_accessible_resources": [
