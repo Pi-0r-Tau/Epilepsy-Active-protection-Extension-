@@ -26,6 +26,10 @@ This is calulated by the pixel value difference between consecutive video frames
 
 4. Frame difference:
          For each new frame, the function processFrameDifference calculates the absolute difference between the current greyscale frame and the previous greyscale frame.
+
+5. Mean difference:
+         The sum of the difference is divided by the number of the pixels to obtain the mean difference.
+   
    
       
 ## Works on:
