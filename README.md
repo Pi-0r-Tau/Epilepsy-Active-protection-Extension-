@@ -12,13 +12,15 @@ The user can chose from 3 levels of threshold sensitivity, the lower the thresho
 - Low:
    - 75
 ## Threshold calculation
-This is calulated by the difference between consecutive video frames:
+This is calulated by the pixel value difference between consecutive video frames and then comparing this mean difference against the threshold value. If the mean difference exceeds the threshold, this triggers a blackout to mitigate the flashing light presence in the video.
 
 1. Frame capture:
       The analyzeframe function captures video frames from the video element at a specified frame rate, it draws the current frames onto a canvas and retrieves the pixel data as an image.
 
 2. Greyscale conversion:
         The pixel data is converted to greyscale using the luminance formula.
+
+3. Frame buffering 
    
 ## Works on:
 - YouTube:
