@@ -1,7 +1,7 @@
 # Epilepsy Active Protection Extension
 Detects flashes in videos and applies a blackout to the video element when threshold is breached. Audio will be still heard, however flashes which breach a user defined threshold will initiate a blackout iframe over the youtube video player.
 
-This blackout lasts 5 seconds, and this timer resets if the extension detects further flashes that breach the threshold.
+This blackout lasts 5 seconds, and this timer resets if the extension detects further flashes that breach the threshold. After the 5 seconds is completed and no further flashes are detected the video will slowly be undimmed, as a means to reduce any impact of false negatives. 
 
 The user can chose from 3 levels of threshold sensitivity, the lower the threshold the more sensitive the extension is to flashes:
 
