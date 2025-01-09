@@ -12,6 +12,7 @@ The user can chose from 3 levels of threshold sensitivity, the lower the thresho
 - Low:
    - 75
 ## Threshold calculation
+This is calulated by the difference between consecutive video frames
 
 ## Works on:
 - YouTube:
