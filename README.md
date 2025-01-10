@@ -59,7 +59,10 @@ There are a couple of extensions available however these require an active serve
 - ~~If video starts with flashing lights above threshold delay for blackout~~
 - Nested if loops need to be refactored.
 - User updated settings are only working on browser refresh
+- Autoplay of YT videos sometimes blocked other times not
+
 
 ## Progress
 - Works with Youtube 
-- Testing edge cases before committing 
+- Testing edge cases before committing
+
