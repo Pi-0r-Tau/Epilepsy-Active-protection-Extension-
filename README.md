@@ -61,6 +61,7 @@ There are a couple of extensions available however these require an active serve
 - User updated settings are only working on browser refresh
 - Autoplay of YT videos sometimes blocked other times not
 - Need to implement notifications to user for fatal code errors
+- Need to implemnt silent erros for non important errors
 
 
 ## Progress
