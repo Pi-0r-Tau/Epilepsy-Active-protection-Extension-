@@ -63,6 +63,7 @@ There are a couple of extensions available however these require an active serve
 
 
 ## Progress
-- Works with Youtube 
+- Works with Youtube
+- Working with Youtube adverts 
 - Testing edge cases before committing
 
