@@ -12,7 +12,7 @@ The user can chose from 3 levels of threshold sensitivity, the lower the thresho
 - Low:
    - 75
  
-Currently, user settings only take effect on browser refresh - I am working on this. 
+Currently, user settings only take effect on browser refresh  
   
 ## Threshold calculation
 This is calulated by the pixel value difference between consecutive video frames and then comparing this mean difference against the threshold value. If the mean difference exceeds the threshold, this triggers a blackout to mitigate the flashing light presence in the video.
@@ -54,7 +54,7 @@ There are a couple of extensions available however these require an active serve
 - Youtube
 
 
-## Current issues
+## To-do 
 - ~~Blackout is not eager enough~~
 - ~~If video starts with flashing lights above threshold delay for blackout~~
 - Nested if loops need to be refactored.
