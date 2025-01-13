@@ -1,3 +1,4 @@
+'use strict';
 const FlashProtector = {
     config: {
         threshold: 0.25,
@@ -10,7 +11,9 @@ const FlashProtector = {
         fadeOutDuration: 300,   // Slower fade back in ms
         storageDebounceTime: 1000, // 1 second between storage updates
         protectionEnabled: true,  // Always enabled
-        protectionLevel: 5      // Always maximum protection
+        protectionLevel: 5,      // Always maximum protection
+        seekProtectionDuration: 3000, // 3 seconds protection after seeking
+        seekFadeOutDuration: 1000    // 1 second fade out if no flashes detected
     },
 
     state: {
@@ -33,6 +36,13 @@ const FlashProtector = {
 
     init() {
         try {
+            // Initialize connection with background script
+            chrome.runtime.sendMessage({ type: 'connect' }, response => {
+                if (response?.success) {
+                    this.debug('Connected to background script');
+                }
+            });
+
             this.state.context = this.state.canvas.getContext('2d', { willReadFrequently: true });
             this.state.isIframe = window !== window.top;
 
@@ -56,6 +66,26 @@ const FlashProtector = {
                     this.state.currentSensitivity = changes.threshold.newValue;
                     this.updateActiveBrightness();
                 }
+            });
+
+            // Load and apply saved theme preference
+            chrome.storage.sync.get({
+                userPreferences: {
+                    highContrast: false
+                }
+            }, (result) => {
+                if (result.userPreferences.highContrast) {
+                    document.body.classList.add('high-contrast');
+                }
+            });
+
+            // Listen for theme changes
+            chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+                if (message.type === 'themeChange') {
+                    document.body.classList.toggle('high-contrast', message.highContrast);
+                    sendResponse({ success: true });
+                }
+                return true;
             });
 
             this.setupMutationObserver();
@@ -109,6 +139,20 @@ const FlashProtector = {
             this.state.stats.flashCount++;
             this.state.stats.lastDetection = new Date().toISOString();
         }
+
+        // Send message with retry
+        const sendStatsUpdate = (retries = 3) => {
+            chrome.runtime.sendMessage({
+                type: 'statsUpdate',
+                stats: this.state.stats
+            }).catch(error => {
+                if (retries > 0) {
+                    setTimeout(() => sendStatsUpdate(retries - 1), 1000);
+                }
+            });
+        };
+
+        sendStatsUpdate();
 
         // Debounce storage updates due to max_write_operations_per_hour issues
         const now = Date.now();
@@ -223,34 +267,73 @@ const FlashProtector = {
                 }
             });
 
-            // Enhanced keyboard controls
+            // Enhanced keyboard controls with better event handling
             const handleKeyboard = (e) => {
+                // Check if focus is on video or video container
+                const isVideoFocused = document.activeElement === video ||
+                                     document.activeElement === video.parentElement;
+
                 if (e.altKey) {
                     switch (e.key.toLowerCase()) {
                         case 'b':
+                            e.preventDefault();
                             this.triggerBlackout(video);
                             break;
                         case 's':
-                            this.adjustSensitivity(0.08); // Increase
+                            e.preventDefault();
+                            this.adjustSensitivity(0.08);
                             break;
                         case 'd':
-                            this.adjustSensitivity(-0.08); // Decrease
+                            e.preventDefault();
+                            this.adjustSensitivity(-0.08);
                             break;
                     }
-                } else if (e.key === 'Escape') {
-                    this.resetBrightness(video);
-                } else if (e.key === ' ') {
-                    if (video.paused) {
-                        video.play();
-                    } else {
-                        video.pause();
+                } else if (isVideoFocused) {
+                    switch (e.key) {
+                        case 'Escape':
+                            e.preventDefault();
+                            this.resetBrightness(video);
+                            break;
+                        case ' ':
+                            e.preventDefault();
+                            if (video.paused) {
+                                video.play();
+                            } else {
+                                video.pause();
+                            }
+                            break;
                     }
-                    e.preventDefault();
                 }
             };
 
-            // Add keyboard listener to video container
-            video.parentElement.addEventListener('keydown', handleKeyboard);
+            // Add keyboard listeners to both video and its container
+            video.addEventListener('keydown', handleKeyboard, true);
+            video.parentElement.addEventListener('keydown', handleKeyboard, true);
+
+            // Make video and container focusable
+            video.tabIndex = 0;
+            video.parentElement.tabIndex = 0;
+
+            // Add focus styles
+            video.style.outline = 'none';
+            video.parentElement.style.outline = 'none';
+            video.addEventListener('focus', () => {
+                video.style.outline = '2px solid #0066cc';
+            });
+            video.addEventListener('blur', () => {
+                video.style.outline = 'none';
+            });
+
+            // Remove existing event listener to prevent duplication
+            const existingHandler = video.parentElement.getAttribute('data-keyboard-handler');
+            if (existingHandler) {
+                video.parentElement.removeEventListener('keydown', window[existingHandler]);
+            }
+
+            // Store new handler reference
+            const handlerId = `handler_${Math.random().toString(36).substr(2, 9)}`;
+            window[handlerId] = handleKeyboard;
+            video.parentElement.setAttribute('data-keyboard-handler', handlerId);
 
             // Rest of the protection logic
             let frameCheckHandle;
@@ -295,6 +378,11 @@ const FlashProtector = {
             video.addEventListener('play', startProtection);
             video.addEventListener('pause', stopProtection);
             video.addEventListener('ended', stopProtection);
+
+            // Add seek protection
+            video.addEventListener('seeking', () => {
+                this.triggerSeekProtection(video);
+            });
         } catch (error) {
             this.debug('Error protecting video:', error);
         }
@@ -316,21 +404,61 @@ const FlashProtector = {
             this.debug('Reset blackout timer');
         }
 
-        // Always use maximum protection (brightness 0)
+        // Apply blackout
         video.style.filter = 'brightness(0)';
 
         // Set new timer
         const timeoutId = setTimeout(() => {
-            this.resetBrightness(video);
+            video.style.filter = 'brightness(1)';
+            this.announce('Screen brightness restored');
+            this.state.activeTimers.delete(video);
         }, this.config.blackoutDuration);
 
-        // Store the timer
+        // Store timer reference
         this.state.activeTimers.set(video, {
             timeout: timeoutId,
             startTime: Date.now()
         });
 
         this.debug('Video blackout activated for 5 seconds');
+    },
+
+    triggerSeekProtection(video) {
+        if (!video) return;
+
+        // Apply immediate blackout
+        video.style.filter = 'brightness(0)';
+        this.announce('Video seek detected. Temporary protection activated.');
+
+        // Clear any existing timer
+        const existingTimer = this.state.activeTimers.get(video);
+        if (existingTimer) {
+            clearTimeout(existingTimer.timeout);
+        }
+
+        let startTime = Date.now();
+        let fadeInterval;
+
+        // Set protection timer
+        const timeoutId = setTimeout(() => {
+            // Start gradual fade if no flashes detected
+            fadeInterval = setInterval(() => {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(1, (elapsed - this.config.seekProtectionDuration) / this.config.seekFadeOutDuration);
+                video.style.filter = `brightness(${progress})`;
+
+                if (progress >= 1) {
+                    clearInterval(fadeInterval);
+                    this.announce('Protection restored to normal levels.');
+                }
+            }, 50);
+        }, this.config.seekProtectionDuration);
+
+        this.state.activeTimers.set(video, {
+            timeout: timeoutId,
+            fadeInterval: fadeInterval,
+            startTime: startTime
+        });
     },
 
     resetBrightness(video) {

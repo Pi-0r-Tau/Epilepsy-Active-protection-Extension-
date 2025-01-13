@@ -2,45 +2,253 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Epilepsy Active Protection Settings</title>
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            width: 300px;
+            padding: 15px;
+            font-family: system-ui;
+        }
+        .control {
+            margin: 15px 0;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .value-display {
+            color: #444;
+            font-weight: bold;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+        .status {
+            padding: 8px;
+            margin-top: 10px;
+            background: #e8f5e9;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .high-contrast {
+            background: #000;
+            color: #fff;
+        }
+        .high-contrast .control {
+            background: #333;
+            border: 1px solid #fff;
+        }
+        .stats {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+        .keyboard-shortcuts {
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        .shortcut-key {
+            background: #eee;
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid #ddd;
+        }
+        .stats-container {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        .stats-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .stats-title {
+            margin: 0;
+            color: #495057;
+            font-size: 1.1em;
+        }
+
+        .stats-reset {
+            background: none;
+            border: none;
+            color: #6c757d;
+            cursor: pointer;
+            font-size: 0.9em;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .stats-reset:hover {
+            background: #e9ecef;
+        }
+
+        .stats-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .stats-label {
+            color: #495057;
+            font-weight: 500;
+        }
+
+        .stats-value {
+            color: #0d6efd;
+            font-weight: bold;
+        }
+
+        .high-contrast .stats-container {
+            background: #222;
+            border-color: #444;
+        }
+
+        .high-contrast .stats-item {
+            border-color: #444;
+        }
+
+        .high-contrast .stats-value {
+            color: #66b0ff;
+        }
+
+        .high-contrast .keyboard-shortcuts {
+            color: #fff;
+            background: #333;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .high-contrast .status {
+            background: #333;
+            color: #fff;
+            border: 1px solid #666;
+        }
+
+        .high-contrast .shortcut-key {
+            background: #444;
+            color: #fff;
+            border-color: #666;
+        }
+
+        .footer {
+            margin-top: 20px;
+            padding: 10px;
+            text-align: center;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .github-link {
+            color: #0366d6;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            transition: background-color 0.2s;
+        }
+
+        .github-link:hover {
+            background-color: #f6f8fa;
+            text-decoration: underline;
+        }
+
+        .github-icon {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        .high-contrast .footer {
+            border-color: #444;
+        }
+
+        .high-contrast .github-link {
+            color: #58a6ff;
+        }
+
+        .high-contrast .github-link:hover {
+            background-color: #30363d;
+        }
+    </style>
 </head>
 <body>
-    <main>
-        <h1>Epilepsy Active Protection Settings</h1>
-        <form id="settings-form">
-            <div class="form-group">
-                <label for="threshold-range">Detection Sensitivity (Threshold):</label>
-                <select id="threshold-range" aria-label="Detection Sensitivity (Threshold)">
-                    <option value="10">High</option>
-                    <option value="50">Medium</option>
-                    <option value="70">Low</option>
-                </select>
-                <p class="description">Adjust the sensitivity for detecting flashing lights. High sensitivity detects more subtle flashes, while low sensitivity detects only strong flashes.</p>
-            </div>
+    <h2>Flash Protection Settings</h2>
+    <div class="control">
+        <div class="label-row">
+            <label for="threshold">Sensitivity Level</label>
+            <span class="value-display" id="sensitivityDisplay" aria-live="polite">Medium</span>
+        </div>
+        <input type="range" id="threshold" min="1" max="5" step="1" value="3"
+               aria-label="Adjust sensitivity level">
+        <div class="label-row">
+            <span>Less Sensitive</span>
+            <span>More Sensitive</span>
+        </div>
+    </div>
 
-            <div class="form-group">
-                <label for="dimming-level">Dimming Level (%):</label>
-                <input type="range" id="dimming-level" min="0" max="100" value="50" aria-label="Dimming Level">
-                <p class="description">Set the level of dimming applied to the video when flashing lights are detected. A higher percentage means more dimming.</p>
-            </div>
+    <div class="control">
+        <div class="label-row">
+            <label for="high-contrast">High Contrast Mode</label>
+            <input type="checkbox" id="high-contrast" aria-live="polite">
+        </div>
+    </div>
 
-            <div class="form-group">
-                <label for="blackout">Turn Video to Black:</label>
-                <input type="checkbox" id="blackout" aria-label="Turn Video to Black">
-                <p class="description">Enable this option to turn the video completely black when flashing lights are detected.</p>
-            </div>
+    <div class="keyboard-shortcuts">
+        <p>Keyboard Shortcuts: (Click/Tab to video first)</p>
+        <ul>
+            <li><span class="shortcut-key">Space</span> Play/Pause Video</li>
+            <li><span class="shortcut-key">Alt+B</span> Manual Blackout (5s)</li>
+            <li><span class="shortcut-key">Alt+S</span> Increase Sensitivity</li>
+            <li><span class="shortcut-key">Alt+D</span> Decrease Sensitivity</li>
+            <li><span class="shortcut-key">Esc</span> Reset Brightness</li>
+        </ul>
+    </div>
 
-            <button type="button" id="save">Save Settings</button>
-            <p id="status" role="status"></p>
-        </form>
+    <div class="stats-container">
+        <div class="stats-header">
+            <h3 class="stats-title">Protection Statistics</h3>
+            <button class="stats-reset" id="resetStats">Reset Stats</button>
+        </div>
+        <div class="stats-item">
+            <span class="stats-label">Flashes Detected</span>
+            <span class="stats-value" id="flashCount">0</span>
+        </div>
+        <div class="stats-item">
+            <span class="stats-label">Last Detection</span>
+            <span class="stats-value" id="lastDetection">Never</span>
+        </div>
+        <div class="stats-item">
+            <span class="stats-label">Protection Status</span>
+            <span class="stats-value" id="protectionStatus">Active</span>
+        </div>
+    </div>
 
-        <section class="info">
-            <h2>About This Extension</h2>
-            <p>For more information about this extension, please visit the <a href="https://github.com/Pi-0r-Tau/Epilepsy-Active-protection-Extension-" target="_blank">GitHub page</a>.</p>
-        </section>
-    </main>
+    <div class="status" id="status" role="status" aria-live="polite">Protection Active</div>
+
+    <div class="footer">
+        <a href="https://github.com/Pi-0r-Tau/Epilepsy-Active-protection-Extension-"
+           class="github-link"
+           target="_blank"
+           rel="noopener noreferrer"
+           title="View project on GitHub">
+            <svg class="github-icon" viewBox="0 0 16 16">
+                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+            </svg>
+            View on GitHub
+        </a>
+    </div>
     <script src="popup.js"></script>
 </body>
 </html>

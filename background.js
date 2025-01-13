@@ -1,32 +1,176 @@
-"use strict";
+'use strict';
 
-chrome.runtime.onInstalled.addListener(() => {
-    console.log("Extension installed");
-});
+(function() {
+    // Private state
+    const state = Object.seal({
+        activeTabsProtected: new Set(),
+        globalStats: {
+            totalFlashes: 0,
+            lastDetection: null
+        },
+        connections: new Map()
+    });
 
-chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
-    if (request.message === "clicked_browser_action" || request.threshold !== undefined || request.dimmingLevel !== undefined || request.blackout !== undefined) {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            if (tabs.length > 0) {
-                const activeTab = tabs; // Correctly reference the first tab
-                chrome.tabs.sendMessage(activeTab.id, request, (response) => {
-                    if (chrome.runtime.lastError) {
-                        console.error("Error sending message to tab:", chrome.runtime.lastError);
-                        sendResponse({ status: "error", message: chrome.runtime.lastError.message });
-                    } else {
-                        console.log("Message sent to tab:", activeTab.url);
-                        console.log("Response from content script:", response);
-                        sendResponse({ status: "success", message: "Settings updated", response });
-                    }
-                });
-            } else {
-                console.error("No active tab found.");
-                sendResponse({ status: "error", message: "No active tab found" });
-            }
-        });
-    } else {
-        console.error("Invalid request:", request);
-        sendResponse({ status: "error", message: "Invalid request" });
+    let lastStorageUpdate = 0;
+    const MIN_STORAGE_INTERVAL = 2000; // Minimum 2 seconds between storage operations
+
+    // Validate message data
+    function validateMessage(message) {
+        if (!message || typeof message !== 'object') {
+            throw new Error('Invalid message format');
+        }
+        if (typeof message.type !== 'string') {
+            throw new Error('Invalid message type');
+        }
+        return true;
     }
-    return true; // Indicate that the response will be sent asynchronously
-});
+
+    // Secure message handler
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        try {
+            if (!validateMessage(message)) {
+                throw new Error('Message validation failed');
+            }
+
+            const safeTabId = sender.tab?.id;
+            if (!safeTabId) {
+                throw new Error('Invalid sender');
+            }
+
+            switch (message.type) {
+                case 'statsUpdate':
+                    updateGlobalStats(message.stats);
+                    broadcastToAllTabs(message);
+                    sendResponse({ success: true });
+                    break;
+                case 'getState':
+                    sendResponse(state);
+                    break;
+                case 'sensitivityChanged':
+                    broadcastToAllTabs(message);
+                    sendResponse({ success: true });
+                    break;
+                case 'connect':
+                    handleConnection(safeTabId);
+                    sendResponse({ success: true });
+                    break;
+                case 'settingsUpdate':
+                    broadcastToAllTabs(message);
+                    sendResponse({ success: true });
+                    break;
+            }
+        } catch (error) {
+            console.error('[Security] Message handling error:', error);
+            sendResponse({ success: false, error: 'Security validation failed' });
+        }
+        return true; // Keep connection alive for async response
+    });
+
+    // Track protected tabs
+    chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+        if (changeInfo.status === 'complete') {
+            state.activeTabsProtected.add(tabId);
+        }
+    });
+
+    chrome.tabs.onRemoved.addListener((tabId) => {
+        state.activeTabsProtected.delete(tabId);
+    });
+
+    // Storage management with retry logic
+    const storageManager = {
+        queue: [],
+        isProcessing: false,
+        retryDelay: 2000,
+        maxRetries: 3,
+
+        async update(data, retryCount = 0) {
+            return new Promise((resolve, reject) => {
+                try {
+                    chrome.storage.sync.set(data, () => {
+                        if (chrome.runtime.lastError) {
+                            console.warn('Storage update retry:', chrome.runtime.lastError);
+                            if (retryCount < this.maxRetries) {
+                                setTimeout(() => {
+                                    this.update(data, retryCount + 1)
+                                        .then(resolve)
+                                        .catch(reject);
+                                }, this.retryDelay);
+                            } else {
+                                reject(chrome.runtime.lastError);
+                            }
+                        } else {
+                            resolve();
+                        }
+                    });
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        },
+
+        async processQueue() {
+            if (this.isProcessing || this.queue.length === 0) return;
+
+            this.isProcessing = true;
+            const item = this.queue.shift();
+
+            try {
+                await this.update(item.data);
+                item.resolve();
+            } catch (error) {
+                item.reject(error);
+            } finally {
+                this.isProcessing = false;
+                if (this.queue.length > 0) {
+                    setTimeout(() => this.processQueue(), 1000);
+                }
+            }
+        },
+
+        enqueue(data) {
+            return new Promise((resolve, reject) => {
+                this.queue.push({ data, resolve, reject });
+                this.processQueue();
+            });
+        }
+    };
+
+    function updateGlobalStats(stats) {
+        const now = Date.now();
+        if (now - lastStorageUpdate < MIN_STORAGE_INTERVAL) {
+            return; // Skip update if too soon
+        }
+
+        state.globalStats.totalFlashes += stats.flashCount;
+        state.globalStats.lastDetection = stats.lastDetection;
+
+        // Queue storage update
+        storageManager.enqueue({ globalStats: state.globalStats })
+            .catch(error => console.error('Failed to update stats:', error));
+    }
+
+    function handleConnection(tabId) {
+        if (tabId) {
+            state.connections.set(tabId, true);
+            state.activeTabsProtected.add(tabId);
+        }
+    }
+
+    function broadcastToAllTabs(message) {
+        const activeConnections = new Map(state.connections);
+        activeConnections.forEach((value, tabId) => {
+            chrome.tabs.sendMessage(tabId, message).catch(() => {
+                state.connections.delete(tabId);
+                state.activeTabsProtected.delete(tabId);
+            });
+        });
+    }
+
+    // Initialize state from storage
+    chrome.storage.sync.get(['globalStats'], (result) => {
+        if (result.globalStats) {
+            state.globalStats = result.globalStats;
+        }
+    });
+})();
