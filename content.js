@@ -1,5 +1,4 @@
 "use strict";
-
 const DEFAULT_THRESHOLD = 50;
 const DEFAULT_DIMMING_LEVEL = 50;
 const DEFAULT_BLACKOUT = false;
