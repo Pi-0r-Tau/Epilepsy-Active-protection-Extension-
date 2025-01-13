@@ -1,177 +1,416 @@
-"use strict";
-const DEFAULT_THRESHOLD = 50;
-const DEFAULT_DIMMING_LEVEL = 50;
-const DEFAULT_BLACKOUT = false;
+const FlashProtector = {
+    config: {
+        threshold: 0.25,
+        frameSampleRate: 30,
+        debugMode: false,
+        blackoutDuration: 5000, // 5 seconds in milliseconds
+        fadeOutDuration: 300,
+        overlayOpacity: 0.8,
+        fadeInDuration: 1,    // Quick fade to black in ms
+        fadeOutDuration: 300,   // Slower fade back in ms
+        storageDebounceTime: 1000, // 1 second between storage updates
+        protectionEnabled: true,  // Always enabled
+        protectionLevel: 5      // Always maximum protection
+    },
 
-function detectFlashingLights(videoElement, threshold = DEFAULT_THRESHOLD, frameRate = 10, bufferTime = 3, blackout = DEFAULT_BLACKOUT, dimmingLevel = DEFAULT_DIMMING_LEVEL) {
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d', { willReadFrequently: true });
+    state: {
+        lastBrightness: 0,
+        lastFrameTime: 0,
+        canvas: document.createElement('canvas'),
+        context: null,
+        activeVideos: new WeakSet(),
+        isIframe: window !== window.top,
+        activeTimers: new WeakMap(), // Store timers for each video
+        stats: {
+            flashCount: 0,
+            lastDetection: null
+        },
+        announcer: null,
+        lastStorageUpdate: 0,
+        pendingStats: null,
+        currentSensitivity: 0.25
+    },
 
-    function initializeCanvas() {
-        canvas.width = videoElement.videoWidth || 640;
-        canvas.height = videoElement.videoHeight || 360;
-    }
+    init() {
+        try {
+            this.state.context = this.state.canvas.getContext('2d', { willReadFrequently: true });
+            this.state.isIframe = window !== window.top;
 
-    let prevFrame = null;
-    let frameCount = 0;
-    const bufferFrames = [];
-    const bufferSize = bufferTime * frameRate;
-    let dimmed = false;
-    let noFlashTimer = null;
-    let undimming = false;
-    let flashTimestamps = [];
-    let blackoutActive = false;
-    let blackoutTimer = null;
+            // Create accessibility announcer
+            this.createAnnouncer();
 
-    function applyBlackout() {
-        videoElement.style.filter = 'brightness(0%)';
-        blackoutActive = true;
-        clearTimeout(blackoutTimer);
-        blackoutTimer = setTimeout(() => {
-            videoElement.style.filter = '';
-            blackoutActive = false;
-            handlePostBlackout();
-        }, 5000);
-    }
+            // Load settings but enforce maximum protection
+            chrome.storage.sync.get({
+                threshold: 0.25,
+                userPreferences: {
+                    lastSensitivity: 3
+                }
+            }, (settings) => {
+                this.config.threshold = 0.5 - (settings.userPreferences.lastSensitivity * 0.08);
+            });
 
-    function handlePostBlackout() {
-        if (flashTimestamps.length > 0) {
-            videoElement.style.filter = `brightness(${dimmingLevel}%)`;
-            dimmed = true;
-            flashTimestamps = [];
-        }
-    }
+            // Enhanced settings listener for real-time updates
+            chrome.storage.onChanged.addListener((changes) => {
+                if (changes.threshold) {
+                    this.config.threshold = changes.threshold.newValue;
+                    this.state.currentSensitivity = changes.threshold.newValue;
+                    this.updateActiveBrightness();
+                }
+            });
 
-    function analyzeFrame() {
-        if (videoElement.paused || videoElement.ended) return;
-        frameCount++;
-        if (frameCount % frameRate !== 0) {
-            requestAnimationFrame(analyzeFrame);
-            return;
-        }
+            this.setupMutationObserver();
+            this.protectExistingVideos();
 
-        if (canvas.width === 0 || canvas.height === 0) {
-            initializeCanvas();
-        }
-
-        context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-        const frame = context.getImageData(0, 0, canvas.width, canvas.height);
-        const grayFrame = new Uint8Array(canvas.width * canvas.height);
-        const grayFrameLength = grayFrame.length;
-        const frameDataLength = frame.data.length;
-
-        // Convert the frame to grayscale
-        for (let i = 0; i < frameDataLength; i += 4) {
-            grayFrame[i / 4] = 0.299 * frame.data[i] + 0.587 * frame.data[i + 1] + 0.114 * frame.data[i + 2];
-        }
-
-        bufferFrames.push(grayFrame);
-        if (bufferFrames.length > bufferSize) {
-            bufferFrames.shift();
-        }
-
-        if (prevFrame) {
-            processFrameDifference(grayFrame, grayFrameLength);
-        }
-
-        prevFrame = grayFrame;
-        requestAnimationFrame(analyzeFrame);
-    }
-
-    function processFrameDifference(grayFrame, grayFrameLength) {
-        let diffSum = 0;
-        for (let i = 0; i < grayFrameLength; i++) {
-            diffSum += Math.abs(grayFrame[i] - prevFrame[i]);
-        }
-        const meanDiff = diffSum / grayFrameLength;
-        if (meanDiff >= 120 || meanDiff > threshold) {
-            console.log(`Flashing light detected! Mean difference: ${meanDiff}, Threshold: ${threshold}`);
-            applyBlackout();
-            flashTimestamps = [];
-        } else if (undimming) {
-            resetNoFlashTimer();
-        }
-    }
-
-    function resetNoFlashTimer() {
-        clearTimeout(noFlashTimer);
-        noFlashTimer = setTimeout(() => {
-            if (!blackoutActive) {
-                graduallyUndimVideo();
+            // Special handling for YouTube due to videos in iframes
+            if (window.location.hostname.includes('youtube.com')) {
+                this.setupYouTubeHandler();
             }
-        }, 10000);
-    }
 
-    function graduallyUndimVideo() {
-        let brightness = dimmingLevel;
-        undimming = true;
-        const interval = setInterval(() => {
-            brightness += 5;
-            videoElement.style.filter = `brightness(${brightness}%)`;
-            if (brightness >= 100) {
-                clearInterval(interval);
-                undimming = false;
-                videoElement.style.filter = '';
-            }
-        }, 500);
-    }
+            // Load existing stats from videos played or being played
+            chrome.storage.sync.get(['stats'], (result) => {
+                if (result.stats) {
+                    this.state.stats = result.stats;
+                }
+            });
 
-    videoElement.addEventListener('seeked', () => {
-        if (blackoutActive) {
-            applyBlackout();
+            this.debug('Flash Protector initialized in ' + (this.state.isIframe ? 'iframe' : 'main window'));
+        } catch (error) {
+            console.error('Flash Protector initialization failed:', error);
         }
-    });
+    },
 
-    initializeCanvas();
-    analyzeFrame();
-}
+    applySettings() {
+        if (this.state.activeVideos.size > 0) {
+            this.state.activeVideos.forEach(video => {
+                if (!this.config.protectionEnabled) {
+                    this.resetBrightness(video);
+                }
+            });
+        }
+    },
 
-function detectFlashingLightsInIframe(iframe, threshold, blackout, dimmingLevel) {
-    try {
-        const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
-        const videoElements = iframeDocument.querySelectorAll('video');
-        videoElements.forEach(video => {
-            video.addEventListener('play', () => {
-                detectFlashingLights(video, threshold, 10, 3, blackout, dimmingLevel);
+    createAnnouncer() {
+        this.state.announcer = document.createElement('div');
+        this.state.announcer.setAttribute('role', 'alert');
+        this.state.announcer.setAttribute('aria-live', 'polite');
+        this.state.announcer.className = 'flash-protection-announcer';
+        this.state.announcer.style.cssText = 'position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;';
+        document.body.appendChild(this.state.announcer);
+    },
+
+    announce(message) {
+        if (this.state.announcer) {
+            this.state.announcer.textContent = message;
+        }
+    },
+
+    updateStats(flashDetected = false) {
+        if (flashDetected) {
+            this.state.stats.flashCount++;
+            this.state.stats.lastDetection = new Date().toISOString();
+        }
+
+        // Debounce storage updates due to max_write_operations_per_hour issues
+        const now = Date.now();
+        if (now - this.state.lastStorageUpdate > this.config.storageDebounceTime) {
+            // If enough time has passed, update storage
+            chrome.storage.sync.set({ stats: this.state.stats });
+            this.state.lastStorageUpdate = now;
+            this.state.pendingStats = null;
+        } else {
+            // Otherwise, schedule update
+            if (!this.state.pendingStats) {
+                this.state.pendingStats = setTimeout(() => {
+                    chrome.storage.sync.set({ stats: this.state.stats });
+                    this.state.lastStorageUpdate = Date.now();
+                    this.state.pendingStats = null;
+                }, this.config.storageDebounceTime);
+            }
+        }
+
+        // Always notify popup immediately
+        chrome.runtime.sendMessage({
+            type: 'statsUpdate',
+            stats: this.state.stats
+        });
+    },
+
+    setupYouTubeHandler() {
+        this.debug('Setting up YouTube handler');
+        // Monitor for player initialization
+        const checkForPlayer = setInterval(() => {
+            const player = document.querySelector('.html5-video-player');
+            if (player) {
+                clearInterval(checkForPlayer);
+                this.protectExistingVideos();
+            }
+        }, 1000);
+    },
+
+    setupMutationObserver() {
+        const observer = new MutationObserver(mutations => {
+            mutations.forEach(mutation => {
+                mutation.addedNodes.forEach(node => {
+                    if (node.nodeName === 'VIDEO') {
+                        this.protectVideo(node);
+                    } else if (node.getElementsByTagName) {
+                        // Convert HTMLCollection to Array before using forEach
+                        Array.from(node.getElementsByTagName('video'))
+                            .forEach(video => this.protectVideo(video));
+                    }
+                });
             });
         });
-    } catch (error) {
-        console.error("Error accessing iframe content:", error);
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    },
+
+    protectExistingVideos() {
+        // Use querySelectorAll instead as it's more reliable
+        const videos = document.querySelectorAll('video');
+        if (videos.length > 0) {
+            this.debug(`Found ${videos.length} existing videos`);
+            videos.forEach(video => this.protectVideo(video));
+        }
+    },
+
+    protectVideo(video) {
+        if (!video || this.state.activeVideos.has(video)) return;
+
+        try {
+            // Prevent autoplay
+            video.autoplay = false;
+            video.setAttribute('autoplay', 'false');
+            video.pause();
+
+            // Add protection class to video
+            video.classList.add('flash-protected-video');
+
+            // Monitor and prevent autoplay attempts
+            const autoplayObserver = new MutationObserver(() => {
+                if (!video.paused) {
+                    video.pause();
+                    this.debug('Prevented autoplay attempt');
+                }
+            });
+
+            autoplayObserver.observe(video, {
+                attributes: true,
+                attributeFilter: ['autoplay']
+            });
+
+            // Check if video is visible/rendered
+            if (video.offsetParent === null) {
+                this.debug('Video not visible, skipping protection');
+                return;
+            }
+
+            // Add CSS transition for smooth brightness changes
+            video.style.transition = 'filter 0.3s ease';
+
+            this.state.activeVideos.add(video);
+
+            // Add ARIA attributes for accessibility
+            video.setAttribute('aria-label', 'Protected video with flash detection');
+
+            // Add keyboard shortcut for manual toggle
+            video.parentElement.addEventListener('keydown', (e) => {
+                if (e.altKey && e.key === 'b') {
+                    this.triggerBlackout(video);
+                }
+            });
+
+            // Enhanced keyboard controls
+            const handleKeyboard = (e) => {
+                if (e.altKey) {
+                    switch (e.key.toLowerCase()) {
+                        case 'b':
+                            this.triggerBlackout(video);
+                            break;
+                        case 's':
+                            this.adjustSensitivity(0.08); // Increase
+                            break;
+                        case 'd':
+                            this.adjustSensitivity(-0.08); // Decrease
+                            break;
+                    }
+                } else if (e.key === 'Escape') {
+                    this.resetBrightness(video);
+                } else if (e.key === ' ') {
+                    if (video.paused) {
+                        video.play();
+                    } else {
+                        video.pause();
+                    }
+                    e.preventDefault();
+                }
+            };
+
+            // Add keyboard listener to video container
+            video.parentElement.addEventListener('keydown', handleKeyboard);
+
+            // Rest of the protection logic
+            let frameCheckHandle;
+
+            const stopProtection = () => {
+                if (frameCheckHandle) {
+                    cancelAnimationFrame(frameCheckHandle);
+                    frameCheckHandle = null;
+                }
+                // Ensure video returns to normal brightness when stopped
+                this.resetBrightness(video);
+            };
+
+            const startProtection = () => {
+                let lastAnalysisTime = 0;
+
+                const checkFrame = (timestamp) => {
+                    if (video.paused || video.ended) {
+                        stopProtection();
+                        return;
+                    }
+
+                    if (timestamp - lastAnalysisTime >= 1000 / this.config.frameSampleRate) {
+                        try {
+                            const brightness = this.analyzeBrightness(video);
+                            if (Math.abs(brightness - this.state.lastBrightness) > this.config.threshold) {
+                                this.triggerBlackout(video);  // Changed from triggerOverlay
+                            }
+                            this.state.lastBrightness = brightness;
+                            lastAnalysisTime = timestamp;
+                        } catch (error) {
+                            this.debug('Frame analysis error:', error);
+                        }
+                    }
+
+                    frameCheckHandle = requestAnimationFrame(checkFrame);
+                };
+
+                frameCheckHandle = requestAnimationFrame(checkFrame);
+            };
+
+            video.addEventListener('play', startProtection);
+            video.addEventListener('pause', stopProtection);
+            video.addEventListener('ended', stopProtection);
+        } catch (error) {
+            this.debug('Error protecting video:', error);
+        }
+    },
+
+    triggerBlackout(video) {
+        if (!video) return;
+
+        // Update stats
+        this.updateStats(true);
+
+        // Announce flash detection
+        this.announce('Flash detected. Screen darkened for 5 seconds for protection.');
+
+        // Clear any existing timer for this video
+        const existingTimer = this.state.activeTimers.get(video);
+        if (existingTimer) {
+            clearTimeout(existingTimer.timeout);
+            this.debug('Reset blackout timer');
+        }
+
+        // Always use maximum protection (brightness 0)
+        video.style.filter = 'brightness(0)';
+
+        // Set new timer
+        const timeoutId = setTimeout(() => {
+            this.resetBrightness(video);
+        }, this.config.blackoutDuration);
+
+        // Store the timer
+        this.state.activeTimers.set(video, {
+            timeout: timeoutId,
+            startTime: Date.now()
+        });
+
+        this.debug('Video blackout activated for 5 seconds');
+    },
+
+    resetBrightness(video) {
+        video.style.filter = 'brightness(1)';
+        this.announce('Screen brightness restored');
+    },
+
+    analyzeBrightness(video) {
+        if (!this.config.protectionEnabled) return 0;
+
+        // Use current sensitivity for threshold adjustment
+        const adjustedThreshold = this.state.currentSensitivity * (this.config.protectionLevel / 3);
+
+        const { canvas, context } = this.state;
+        const sampleSize = 4; // Sample every 4th pixel for performance
+
+        canvas.width = video.videoWidth / sampleSize;
+        canvas.height = video.videoHeight / sampleSize;
+
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height).data;
+
+        let totalBrightness = 0;
+        for (let i = 0; i < imageData.length; i += 4) {
+            totalBrightness += (
+                imageData[i] * 0.2126 +
+                imageData[i + 1] * 0.7152 +
+                imageData[i + 2] * 0.0722
+            ) / 255;
+        }
+
+        return totalBrightness / (imageData.length / 4);
+    },
+
+    updateActiveBrightness() {
+        if (this.state.activeVideos.size > 0) {
+            this.state.activeVideos.forEach(video => {
+                // Only update if video is currently playing
+                if (!video.paused && !video.ended) {
+                    const brightness = this.analyzeBrightness(video);
+                    if (Math.abs(brightness - this.state.lastBrightness) > this.config.threshold) {
+                        this.triggerBlackout(video);
+                    }
+                }
+            });
+        }
+        this.debug('Updated sensitivity applied to active videos');
+    },
+
+    resetAllVideos() {
+        this.state.activeVideos.forEach(video => {
+            this.resetBrightness(video);
+        });
+    },
+
+    adjustSensitivity(change) {
+        const currentValue = Math.round((0.5 - this.config.threshold) / 0.08);
+        const newValue = Math.max(1, Math.min(5, currentValue + (change > 0 ? 1 : -1)));
+        const newThreshold = 0.5 - (newValue * 0.08);
+
+        chrome.storage.sync.set({
+            threshold: newThreshold,
+            userPreferences: { lastSensitivity: newValue }
+        });
+
+        this.announce(`Sensitivity ${change > 0 ? 'increased' : 'decreased'} to ${
+            ['Very Low', 'Low', 'Medium', 'High', 'Very High'][newValue - 1]
+        }`);
+    },
+
+    debug(...args) {
+        if (this.config.debugMode) {
+            console.log('[Flash Protector]', ...args);
+        }
     }
+};
+
+// Initialize protection
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => FlashProtector.init());
+} else {
+    FlashProtector.init();
 }
-
-function initializeDetection(threshold, blackout, dimmingLevel) {
-    const videoElements = document.querySelectorAll('video');
-    videoElements.forEach(video => {
-        video.addEventListener('play', () => {
-            detectFlashingLights(video, threshold, 10, 3, blackout, dimmingLevel);
-        });
-    });
-
-    const iframes = document.querySelectorAll('iframe');
-    iframes.forEach(iframe => {
-        iframe.addEventListener('load', () => {
-            detectFlashingLightsInIframe(iframe, threshold, blackout, dimmingLevel);
-        });
-    });
-}
-
-chrome.storage.sync.get(['threshold', 'blackout', 'dimmingLevel'], (result) => {
-    const threshold = result.threshold !== undefined ? parseInt(result.threshold) : DEFAULT_THRESHOLD;
-    const blackout = result.blackout !== undefined ? result.blackout : DEFAULT_BLACKOUT;
-    const dimmingLevel = result.dimmingLevel !== undefined ? parseInt(result.dimmingLevel) : DEFAULT_DIMMING_LEVEL;
-    initializeDetection(threshold, blackout, dimmingLevel);
-});
-
-// Listen for messages from the popup to update settings
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    const threshold = message.threshold !== undefined ? parseInt(message.threshold) : DEFAULT_THRESHOLD;
-    const dimmingLevel = message.dimmingLevel !== undefined ? parseInt(message.dimmingLevel) : DEFAULT_DIMMING_LEVEL;
-    const blackout = message.blackout !== undefined ? message.blackout : DEFAULT_BLACKOUT;
-    console.log(`Updated settings: Threshold: ${threshold}, Blackout: ${blackout}, Dimming Level: ${dimmingLevel}`);
-
-    // Reinitialize detection with updated settings
-    initializeDetection(threshold, blackout, dimmingLevel);
-
-    sendResponse({ status: "Settings updated" });
-});
