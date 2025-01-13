@@ -7,7 +7,7 @@ A browser extension providing real-time protection against harmful flashing cont
 ### Core Protection
 - Automatic flash detection and prevention
 - Real-time frame analysis (30fps)
-- Instant blackout response (0ms latency)
+- Near instant blackout response (1ms latency)
 - Maximum protection by default
 - Works with YouTube and embedded videos
 
