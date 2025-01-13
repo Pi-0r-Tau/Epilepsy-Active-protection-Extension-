@@ -136,6 +136,7 @@ if (change > threshold) triggerProtection();
 - Video format support
 - Storage quotas
 - Tab communication
+- Updates to user settings are causing errors if the stats counter is not reset.
 
 ## Privacy & Data Protection
 
