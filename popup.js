@@ -5,7 +5,8 @@
     function safeGetElement(id) {
         const element = document.getElementById(id);
         if (!element) {
-            throw new Error(`Element not found: ${id}`);
+            console.warn(`Element not found: ${id}`);
+            return document.createElement('div'); // Fallback to a dummy element
         }
         return element;
     }
@@ -36,7 +37,7 @@
             };
 
             function getSensitivityLabel(value) {
-                return SENSITIVITY_LABELS[value] || 'Medium';
+                return SENSITIVITY_LABELS[value] || SENSITIVITY_LABELS[userPreferences.lastSensitivity];
             }
 
             function initializeSettings() {
@@ -148,35 +149,41 @@
                     if (this.processing || this.pending.size === 0) return;
                     this.processing = true;
 
-                    const batch = {};
-                    const callbacks = new Map();
-
-                    this.pending.forEach((item, key) => {
-                        batch[key] = item.value;
-                        callbacks.set(key, { resolve: item.resolve, reject: item.reject });
-                    });
+                    const CHUNK_SIZE = 10; // Process in chunks of 10 items
+                    const entries = Array.from(this.pending.entries());
                     this.pending.clear();
 
-                    try {
-                        await new Promise((resolve, reject) => {
-                            chrome.storage.sync.set(batch, () => {
-                                if (chrome.runtime.lastError) {
-                                    reject(chrome.runtime.lastError);
-                                } else {
-                                    resolve();
-                                }
-                            });
+                    for (let i = 0; i < entries.length; i += CHUNK_SIZE) {
+                        const chunk = entries.slice(i, i + CHUNK_SIZE);
+                        const batch = {};
+                        const callbacks = new Map();
+
+                        chunk.forEach(([key, item]) => {
+                            batch[key] = item.value;
+                            callbacks.set(key, { resolve: item.resolve, reject: item.reject });
                         });
 
-                        callbacks.forEach(({ resolve }) => resolve());
-                    } catch (error) {
-                        console.error('Storage update failed:', error);
-                        callbacks.forEach(({ reject }) => reject(error));
-                    } finally {
-                        this.processing = false;
-                        if (this.pending.size > 0) {
-                            setTimeout(() => this.process(), 1000);
+                        try {
+                            await new Promise((resolve, reject) => {
+                                chrome.storage.sync.set(batch, () => {
+                                    if (chrome.runtime.lastError) {
+                                        reject(chrome.runtime.lastError);
+                                    } else {
+                                        resolve();
+                                    }
+                                });
+                            });
+
+                            callbacks.forEach(({ resolve }) => resolve());
+                        } catch (error) {
+                            console.error('Storage update failed:', error);
+                            callbacks.forEach(({ reject }) => reject(error));
                         }
+                    }
+
+                    this.processing = false;
+                    if (this.pending.size > 0) {
+                        setTimeout(() => this.process(), 1000);
                     }
                 }
             };
@@ -191,47 +198,36 @@
                         controls.sensitivityDisplay.textContent = getSensitivityLabel(value);
                         announceChange(`Sensitivity set to ${controls.sensitivityDisplay.textContent}`);
 
-                        // Add retry mechanism with backoff
-                        const retryUpdate = async (settings, attempt = 1, maxAttempts = 3) => {
-                            try {
-                                await new Promise((resolve, reject) => {
-                                    chrome.storage.sync.set(settings, () => {
-                                        if (chrome.runtime.lastError) {
-                                            reject(chrome.runtime.lastError);
-                                        } else {
-                                            resolve();
-                                        }
-                                    });
-                                });
-
-                                // After successful storage update, notify background
-                                chrome.runtime.sendMessage({
-                                    type: 'settingsUpdate',
-                                    settings: settings
-                                });
-
-                                notifyTabs(settings);
-                            } catch (error) {
-                                console.error(`Settings update attempt ${attempt} failed:`, error);
-                                if (attempt < maxAttempts) {
-                                    // Exponential backoff
-                                    const delay = Math.min(1000 * Math.pow(2, attempt), 5000);
-                                    setTimeout(() => retryUpdate(settings, attempt + 1), delay);
-                                } else {
-                                    controls.status.textContent = 'Settings update failed. Please try again.';
-                                    // Force stats refresh to resync
-                                    chrome.runtime.sendMessage({ type: 'statsRequest' });
-                                }
-                            }
-                        };
-
-                        retryUpdate({
+                        const settings = {
                             threshold: threshold,
                             userPreferences: {
                                 lastSensitivity: value,
                                 highContrast: controls.highContrast.checked
                             }
+                        };
+
+                        // Add to batch for immediate operations
+                        Object.entries(settings).forEach(([key, value]) => {
+                            pendingStorageUpdates[key] = value;
                         });
+                        batchStorageUpdate();
+
+                        // Also queue in storageQueue for reliability
+                        storageQueue.update('settings', settings)
+                            .then(() => {
+                                // After successful storage update, notify background
+                                chrome.runtime.sendMessage({
+                                    type: 'settingsUpdate',
+                                    settings: settings
+                                });
+                                notifyTabs(settings);
+                            })
+                            .catch(error => {
+                                console.error('Settings update failed:', error);
+                                controls.status.textContent = 'Settings update failed. Please try again.';
+                                // Force stats refresh to resync
+                                chrome.runtime.sendMessage({ type: 'statsRequest' });
+                            });
                     }
                 } catch (error) {
                     console.error('Error updating setting:', error);
@@ -252,13 +248,37 @@
             setInterval(refreshStats, 5000);
 
             function notifyTabs(settings) {
-                chrome.tabs.query({}, tabs => {
-                    tabs.forEach(tab => {
-                        chrome.tabs.sendMessage(tab.id, {
-                            type: 'settingsUpdate',
-                            settings: settings
-                        }).catch(() => {/* Ignore connection errors */});
+                chrome.tabs.query({}, async tabs => {
+                    const promises = tabs.map(async tab => {
+                        if (tab.status === 'complete') {
+                            try {
+                                await new Promise((resolve, reject) => {
+                                    const timeout = setTimeout(() => {
+                                        reject(new Error('Message timeout'));
+                                    }, 1000); // 1 second timeout
+
+                                    chrome.tabs.sendMessage(tab.id, {
+                                        type: 'settingsUpdate',
+                                        settings: settings
+                                    }, response => {
+                                        clearTimeout(timeout);
+                                        if (chrome.runtime.lastError) {
+                                            // Ignore "receiving end does not exist" errors
+                                            if (!chrome.runtime.lastError.message.includes('Receiving end does not exist')) {
+                                                console.warn(`Tab ${tab.id} message error:`, chrome.runtime.lastError);
+                                            }
+                                        }
+                                        resolve(response);
+                                    });
+                                });
+                            } catch (error) {
+                                // Handle timeout or other errors
+                                console.warn(`Tab ${tab.id} communication failed:`, error);
+                            }
+                        }
                     });
+
+                    await Promise.allSettled(promises);
                 });
             }
 
@@ -293,11 +313,13 @@
                 }
             }
 
+            const ANNOUNCE_CHANGE_TIMEOUT = 2000;
+
             function announceChange(message) {
                 controls.status.textContent = message;
                 setTimeout(() => {
                     controls.status.textContent = 'Protection Active';
-                }, 2000);
+                }, ANNOUNCE_CHANGE_TIMEOUT);
             }
 
             // Add reset stats functionality
