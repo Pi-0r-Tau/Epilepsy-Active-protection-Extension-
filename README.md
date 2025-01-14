@@ -1,6 +1,7 @@
 # Epilepsy Flash Protection Extension
 
 A browser extension that protects users from harmful flashing content by analyzing video frames in real-time and applying dynamic brightness control.
+Provides stats of detected flashes.
 
 ## Key Features
 
@@ -136,7 +137,7 @@ if (change > threshold) triggerProtection();
 - Video format support
 - Storage quotas
 - Tab communication
-- Updates to user settings are causing errors if the stats counter is not reset
+- Updates to user settings are causing errors if the stats is recording a large amount of flashes
 
 ## Privacy & Data Protection
 
