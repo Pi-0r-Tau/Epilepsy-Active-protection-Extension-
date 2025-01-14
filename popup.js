@@ -212,7 +212,7 @@
                         });
                         batchStorageUpdate();
 
-                        // Also queue in storageQueue for reliability
+                        // Queue in storageQueue for reliability
                         storageQueue.update('settings', settings)
                             .then(() => {
                                 // After successful storage update, notify background
