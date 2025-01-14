@@ -1,7 +1,6 @@
 # Epilepsy Flash Protection Extension
 
 A browser extension that protects users from harmful flashing content by analyzing video frames in real-time and applying dynamic brightness control.
-Provides stats of detected flashes.
 
 ## Key Features
 
@@ -92,6 +91,36 @@ if (change > threshold) triggerProtection();
 | Alt+D | Decrease Sensitivity |
 | Esc | Reset Brightness |
 
+## Recent Fixes & Improvements
+
+### Storage Management
+- Added reliable storage queue system
+- Implemented batch storage updates
+- Added retry mechanism for failed storage operations
+- Reduced storage write operations to prevent quota limits
+- Added chunked processing for large storage updates
+
+### Performance & Reliability
+- Improved settings recovery mechanism
+- Added fallback for missing DOM elements
+- Enhanced error handling for storage operations
+- Implemented debounced settings updates
+- Added validation for all storage operations
+
+### User Interface
+- Improved high contrast mode persistence
+- Enhanced sensitivity control feedback
+- Added more reliable stats updates
+- Improved error messaging
+- Added accessibility announcements
+
+### Bug Fixes
+- Fixed storage queue processing
+- Resolved settings sync issues
+- Fixed high contrast mode toggle
+- Improved stats update reliability
+- Fixed sensitivity control edge cases
+
 ## Technical Details
 
 ### Sensitivity Levels
@@ -118,7 +147,7 @@ if (change > threshold) triggerProtection();
 - WeakSet/Map usage
 - Event delegation
 
-## Developer Notes
+### Storage System
 
 ### Installation Requirements
 - Microsoft Edge
@@ -137,7 +166,6 @@ if (change > threshold) triggerProtection();
 - Video format support
 - Storage quotas
 - Tab communication
-- Updates to user settings are causing errors if the stats is recording a large amount of flashes
 
 ## Privacy & Data Protection
 
