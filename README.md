@@ -1,6 +1,6 @@
 # Epilepsy Flash Protection Extension
 
-A browser extension that protects users from harmful flashing content by analyzing video frames in real-time and applying dynamic brightness control.
+A browser extension that protects users from harmful flashing content by analyzing video frames in real-time and applying dynamic brightness control. With stats for how many flashes detected.
 
 ## Key Features
 
