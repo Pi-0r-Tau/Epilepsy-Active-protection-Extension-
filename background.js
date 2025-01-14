@@ -15,6 +15,12 @@
     const MIN_STORAGE_INTERVAL = 2000; // Minimum 2 seconds between storage operations
 
     // Validate message data
+    /**
+     * Validates the structure and type of a message object.
+     * @param {Object} message - The message object to validate.
+     * @returns {boolean} - Returns true if the message is valid.
+     * @throws {Error} - Throws an error if the message is invalid.
+     */
     function validateMessage(message) {
         if (!message || typeof message !== 'object') {
             throw new Error('Invalid message format');
@@ -40,11 +46,15 @@
                 console.error('Settings save failed:', error);
                 if (this.retryAttempts < this.maxRetries) {
                     this.retryAttempts++;
-                    setTimeout(() => this.saveSettings(settings), 2000);
+                    this.retrySaveSettings(settings);
                 }
             }
         },
 
+        /**
+         * Recovers settings from chrome storage.
+         * @returns {Promise<Object|null>} The recovered settings or null if recovery fails.
+         */
         async recoverSettings() {
             try {
                 const result = await chrome.storage.sync.get(['stats', 'threshold', 'userPreferences']);
@@ -65,79 +75,89 @@
                 console.error('Settings recovery failed:', error);
                 return null;
             }
+        },
+
+        retrySaveSettings(settings) {
+            setTimeout(() => this.saveSettings(settings), 2000);
         }
     };
 
     // Secure message handler
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        try {
-            if (!validateMessage(message)) {
-                throw new Error('Message validation failed');
-            }
+        const handleAsyncResponse = async () => {
+            try {
+                if (!validateMessage(message)) {
+                    throw new Error('Message validation failed');
+                }
 
-            const safeTabId = sender.tab?.id;
+                const safeTabId = sender.tab?.id;
 
-            switch (message.type) {
-                case 'statsRequest':
-                    // Fetch latest stats and send them back
-                    chrome.storage.sync.get(['stats', 'globalStats'], result => {
-                        const stats = {
-                            ...result.stats,
-                            ...result.globalStats,
-                            timestamp: Date.now()
-                        };
-                        sendResponse({ success: true, stats });
-                    });
-                    return true; // Keep channel open
+                switch (message.type) {
+                    case 'statsRequest':
+                        const result = await chrome.storage.sync.get(['stats', 'globalStats']);
+                        sendResponse({
+                            success: true,
+                            stats: {
+                                ...result.stats,
+                                ...result.globalStats,
+                                timestamp: Date.now()
+                            }
+                        });
+                        break;
 
-                case 'settingsUpdate':
-                    // Validate settings before saving
-                    if (validateSettings(message.settings)) {
-                        settingsManager.saveSettings(message.settings)
-                            .then(() => {
-                                broadcastToAllTabs({
-                                    type: 'settingsUpdated',
-                                    settings: message.settings
-                                });
-                                sendResponse({ success: true });
-                            })
-                            .catch(error => {
-                                console.error('Settings save failed:', error);
-                                sendResponse({ success: false, error: 'Settings save failed' });
+                    case 'settingsUpdate':
+                        if (validateSettings(message.settings)) {
+                            await settingsManager.saveSettings(message.settings);
+                            await broadcastToAllTabs({
+                                type: 'settingsUpdated',
+                                settings: message.settings
                             });
-                    } else {
-                        sendResponse({ success: false, error: 'Invalid settings' });
-                    }
-                    return true;
+                            sendResponse({ success: true });
+                        } else {
+                            sendResponse({ success: false, error: 'Invalid settings' });
+                        }
+                        break;
 
-                case 'statsUpdate':
-                    updateGlobalStats(message.stats, true);
-                    sendResponse({ success: true });
-                    break;
-                case 'getState':
-                    sendResponse(state);
-                    break;
-                case 'sensitivityChanged':
-                    broadcastToAllTabs(message);
-                    sendResponse({ success: true });
-                    break;
-                case 'connect':
-                    handleConnection(safeTabId);
-                    sendResponse({ success: true });
-                    break;
-                case 'recoveryRequest':
-                    settingsManager.recoverSettings()
-                        .then(settings => sendResponse({ success: true, settings }))
-                        .catch(error => sendResponse({ success: false, error }));
-                    return true; // Keep channel open for async response
+                    case 'statsUpdate':
+                        updateGlobalStats(message.stats, true);
+                        sendResponse({ success: true });
+                        break;
+                    case 'getState':
+                        sendResponse(state);
+                        break;
+                    case 'sensitivityChanged':
+                        broadcastToAllTabs(message);
+                        sendResponse({ success: true });
+                        break;
+                    case 'connect':
+                        handleConnection(safeTabId);
+                        sendResponse({ success: true });
+                        break;
+                    case 'recoveryRequest':
+                        settingsManager.recoverSettings()
+                            .then(settings => sendResponse({ success: true, settings }))
+                            .catch(error => sendResponse({ success: false, error }));
+                        return true; // Keep channel open for async response
+                }
+            } catch (error) {
+                console.error('Message handling error:', error);
+                sendResponse({ success: false, error: error.message });
             }
-        } catch (error) {
-            console.error('[Security] Message handling error:', error);
-            sendResponse({ success: false, error: 'Security validation failed' });
-        }
-        return true; // Keep connection alive for async response
+        };
+
+        handleAsyncResponse().catch(error => {
+            console.error('Async handling error:', error);
+            sendResponse({ success: false, error: 'Async operation failed' });
+        });
+
+        return true; // Indicate async response
     });
 
+    /**
+     * Validates the provided settings object.
+     * @param {Object} settings - The settings object to validate.
+     * @returns {boolean} - Returns true if the settings are valid, otherwise false.
+     */
     function validateSettings(settings) {
         if (!settings) return false;
 
@@ -151,8 +171,8 @@
 
         // Validate userPreferences
         if (settings.userPreferences) {
-            const { lastSensitivity } = settings.userPreferences;
-            if (lastSensitivity && (lastSensitivity < 1 || lastSensitivity > 5)) {
+            const lastSensitivity = parseFloat(settings.userPreferences.lastSensitivity);
+            if (isNaN(lastSensitivity) || lastSensitivity < 1 || lastSensitivity > 5) {
                 return false;
             }
         }
@@ -178,6 +198,13 @@
         retryDelay: 2000,
         maxRetries: 3,
 
+        /**
+         * Updates the chrome storage with the provided data.
+         * Retries the update operation if it fails, up to a maximum number of retries.
+         * @param {Object} data - The data to be stored.
+         * @param {number} [retryCount=0] - The current retry attempt count.
+         * @returns {Promise<void>} A promise that resolves when the update is successful.
+         */
         async update(data, retryCount = 0) {
             return new Promise((resolve, reject) => {
                 try {
@@ -222,6 +249,11 @@
             }
         },
 
+        /**
+         * Adds a data item to the storage queue and processes the queue.
+         * @param {Object} data - The data to be stored.
+         * @returns {Promise} - A promise that resolves when the data is successfully stored.
+         */
         enqueue(data) {
             return new Promise((resolve, reject) => {
                 this.queue.push({ data, resolve, reject });
@@ -230,6 +262,11 @@
         }
     };
 
+    /**
+     * Updates the global statistics and optionally broadcasts the update to all tabs.
+     * @param {Object} stats - The statistics to update.
+     * @param {boolean} [shouldBroadcast=false] - Whether to broadcast the update to all tabs.
+     */
     function updateGlobalStats(stats, shouldBroadcast = false) {
         if (!stats) return;
 
@@ -245,6 +282,9 @@
         };
 
         storageManager.enqueue({ globalStats: state.globalStats })
+            .then(() => {
+                lastStorageUpdate = now;
+            })
             .catch(async error => {
                 console.error('Stats update failed:', error);
                 await settingsManager.recoverSettings();
@@ -255,6 +295,10 @@
         }
     }
 
+    /**
+     * Handles the connection of a tab by adding it to the active connections and protected tabs.
+     * @param {number} tabId - The ID of the tab to handle.
+     */
     function handleConnection(tabId) {
         if (tabId) {
             state.connections.set(tabId, true);
@@ -262,14 +306,38 @@
         }
     }
 
-    function broadcastToAllTabs(message) {
+    /**
+     * Broadcasts a message to all active tabs.
+     * This function iterates over all active connections and sends the provided message to each tab.
+     * If a tab fails to receive the message, it is removed from the active connections and protected tabs.
+     * @param {Object} message - The message to broadcast.
+     */
+    async function broadcastToAllTabs(message) {
         const activeConnections = new Map(state.connections);
-        activeConnections.forEach((value, tabId) => {
-            chrome.tabs.sendMessage(tabId, message).catch(() => {
+        for (const [tabId] of activeConnections) {
+            try {
+                // Check if tab exists before sending
+                const tab = await chrome.tabs.get(tabId).catch(() => null);
+                if (tab && tab.status === 'complete') {
+                    await chrome.tabs.sendMessage(tabId, message).catch(error => {
+                        // Only log non-connection errors
+                        if (!error.message.includes('Receiving end does not exist')) {
+                            console.error(`Failed to send message to tab ${tabId}:`, error);
+                        }
+                        state.connections.delete(tabId);
+                        state.activeTabsProtected.delete(tabId);
+                    });
+                } else {
+                    state.connections.delete(tabId);
+                    state.activeTabsProtected.delete(tabId);
+                }
+            } catch (error) {
+                // Handle any other errors
+                console.error(`Error processing tab ${tabId}:`, error);
                 state.connections.delete(tabId);
                 state.activeTabsProtected.delete(tabId);
-            });
-        });
+            }
+        }
     }
 
     // Initialize state from storage
