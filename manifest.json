@@ -1,39 +1,38 @@
 {
-  "manifest_version": 3,
-  "name": "Epilepsy Flash Protection",
-  "version": "1.0",
-  "description": "Protects users from harmful flashing content in videos",
-  "permissions": [
-    "activeTab",
-    "storage",
-    "tabs",
-    "webNavigation"
-  ],
-  "background": {
-    "service_worker": "background.js"
-  },
-  "action": {
-    "default_popup": "popup.html"
-  },
-  "content_scripts": [{
-    "matches": [
-      "<all_urls>",
+    "manifest_version": 3,
+    "name": "Epilepsy Flash Protection",
+    "version": "1.0",
+    "description": "Protects users from harmful flashing content in videos",
+    "permissions": [
+      "activeTab",
+      "storage",
+      "tabs",
+      "webNavigation"
+    ],
+    "background": {
+      "service_worker": "background.js"
+    },
+    "action": {
+      "default_popup": "popup.html"
+    },
+    "content_scripts": [{
+      "matches": [
+        "<all_urls>",
+        "*://*.youtube.com/*",
+        "*://*.netflix.com/*",
+        "*://*.amazon.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    }],
+    "host_permissions": [
       "*://*.youtube.com/*",
       "*://*.netflix.com/*",
       "*://*.amazon.com/*"
     ],
-    "js": ["content.js"],
-    "run_at": "document_idle",
-    "all_frames": true
-  }],
-  "host_permissions": [
-    "*://*.youtube.com/*",
-    "*://*.netflix.com/*",
-    "*://*.hulu.com/*",
-    "*://*.amazon.com/*"
-  ],
-  "web_accessible_resources": [{
-    "resources": ["styles.css"],
-    "matches": ["<all_urls>"]
-  }]
-}
+    "web_accessible_resources": [{
+      "resources": ["styles.css"],
+      "matches": ["<all_urls>"]
+    }]
+  }
