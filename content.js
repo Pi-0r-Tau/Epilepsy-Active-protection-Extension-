@@ -335,7 +335,7 @@ const FlashProtector = {
             window[handlerId] = handleKeyboard;
             video.parentElement.setAttribute('data-keyboard-handler', handlerId);
 
-            // Cont. protection logic
+            // Rest of the protection logic
             let frameCheckHandle;
 
             const stopProtection = () => {
@@ -360,7 +360,7 @@ const FlashProtector = {
                         try {
                             const brightness = this.analyzeBrightness(video);
                             if (Math.abs(brightness - this.state.lastBrightness) > this.config.threshold) {
-                                this.triggerBlackout(video);  // Changed from triggerOverlay (experimentally bad idea; triggerOverlay
+                                this.triggerBlackout(video);  // Changed from triggerOverlay
                             }
                             this.state.lastBrightness = brightness;
                             lastAnalysisTime = timestamp;
