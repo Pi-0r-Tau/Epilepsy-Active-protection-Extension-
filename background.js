@@ -25,6 +25,49 @@
         return true;
     }
 
+    // Add settings recovery mechanism
+    const settingsManager = {
+        lastSettings: null,
+        retryAttempts: 0,
+        maxRetries: 3,
+
+        async saveSettings(settings) {
+            this.lastSettings = settings;
+            try {
+                await storageManager.enqueue(settings);
+                this.retryAttempts = 0;
+            } catch (error) {
+                console.error('Settings save failed:', error);
+                if (this.retryAttempts < this.maxRetries) {
+                    this.retryAttempts++;
+                    setTimeout(() => this.saveSettings(settings), 2000);
+                }
+            }
+        },
+
+        async recoverSettings() {
+            try {
+                const result = await chrome.storage.sync.get(['stats', 'threshold', 'userPreferences']);
+                if (result.stats) {
+                    state.globalStats = result.stats;
+                }
+                if (result.threshold) {
+                    broadcastToAllTabs({
+                        type: 'settingsUpdated',
+                        settings: {
+                            threshold: result.threshold,
+                            userPreferences: result.userPreferences
+                        }
+                    });
+                }
+                return result;
+            } catch (error) {
+                console.error('Settings recovery failed:', error);
+                return null;
+            }
+        }
+    };
+
     // Secure message handler
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         try {
@@ -33,14 +76,42 @@
             }
 
             const safeTabId = sender.tab?.id;
-            if (!safeTabId) {
-                throw new Error('Invalid sender');
-            }
 
             switch (message.type) {
+                case 'statsRequest':
+                    // Fetch latest stats and send them back
+                    chrome.storage.sync.get(['stats', 'globalStats'], result => {
+                        const stats = {
+                            ...result.stats,
+                            ...result.globalStats,
+                            timestamp: Date.now()
+                        };
+                        sendResponse({ success: true, stats });
+                    });
+                    return true; // Keep channel open
+
+                case 'settingsUpdate':
+                    // Validate settings before saving
+                    if (validateSettings(message.settings)) {
+                        settingsManager.saveSettings(message.settings)
+                            .then(() => {
+                                broadcastToAllTabs({
+                                    type: 'settingsUpdated',
+                                    settings: message.settings
+                                });
+                                sendResponse({ success: true });
+                            })
+                            .catch(error => {
+                                console.error('Settings save failed:', error);
+                                sendResponse({ success: false, error: 'Settings save failed' });
+                            });
+                    } else {
+                        sendResponse({ success: false, error: 'Invalid settings' });
+                    }
+                    return true;
+
                 case 'statsUpdate':
-                    updateGlobalStats(message.stats);
-                    broadcastToAllTabs(message);
+                    updateGlobalStats(message.stats, true);
                     sendResponse({ success: true });
                     break;
                 case 'getState':
@@ -54,10 +125,11 @@
                     handleConnection(safeTabId);
                     sendResponse({ success: true });
                     break;
-                case 'settingsUpdate':
-                    broadcastToAllTabs(message);
-                    sendResponse({ success: true });
-                    break;
+                case 'recoveryRequest':
+                    settingsManager.recoverSettings()
+                        .then(settings => sendResponse({ success: true, settings }))
+                        .catch(error => sendResponse({ success: false, error }));
+                    return true; // Keep channel open for async response
             }
         } catch (error) {
             console.error('[Security] Message handling error:', error);
@@ -65,6 +137,28 @@
         }
         return true; // Keep connection alive for async response
     });
+
+    function validateSettings(settings) {
+        if (!settings) return false;
+
+        // Validate threshold
+        if ('threshold' in settings) {
+            const threshold = parseFloat(settings.threshold);
+            if (isNaN(threshold) || threshold < 0.1 || threshold > 0.5) {
+                return false;
+            }
+        }
+
+        // Validate userPreferences
+        if (settings.userPreferences) {
+            const { lastSensitivity } = settings.userPreferences;
+            if (lastSensitivity && (lastSensitivity < 1 || lastSensitivity > 5)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     // Track protected tabs
     chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
@@ -136,18 +230,29 @@
         }
     };
 
-    function updateGlobalStats(stats) {
+    function updateGlobalStats(stats, shouldBroadcast = false) {
+        if (!stats) return;
+
         const now = Date.now();
         if (now - lastStorageUpdate < MIN_STORAGE_INTERVAL) {
-            return; // Skip update if too soon
+            return;
         }
 
-        state.globalStats.totalFlashes += stats.flashCount;
-        state.globalStats.lastDetection = stats.lastDetection;
+        state.globalStats = {
+            ...state.globalStats,
+            ...stats,
+            lastUpdate: now
+        };
 
-        // Queue storage update
         storageManager.enqueue({ globalStats: state.globalStats })
-            .catch(error => console.error('Failed to update stats:', error));
+            .catch(async error => {
+                console.error('Stats update failed:', error);
+                await settingsManager.recoverSettings();
+            });
+
+        if (shouldBroadcast) {
+            broadcastToAllTabs({ type: 'statsUpdate', stats: state.globalStats });
+        }
     }
 
     function handleConnection(tabId) {
