@@ -6,7 +6,7 @@ A browser extension that protects users from harmful flashing content by analyzi
 
 ### Protection Mechanisms
 - Real-time frame analysis (30fps)
-- Near instant flash detection (1ms latency)
+- Instant flash detection (0ms latency)
 - Automatic blackout response
 - Seek protection with gradual fade
 - YouTube and iframe support
@@ -120,6 +120,34 @@ if (change > threshold) triggerProtection();
 - Fixed high contrast mode toggle
 - Improved stats update reliability
 - Fixed sensitivity control edge cases
+
+### Background Service Worker
+- Fixed duplicate function declarations
+- Added proper error handling in message broadcasting
+- Improved settings validation logic
+- Enhanced storage retry mechanism
+- Added JSDoc documentation for key functions
+
+### Storage System
+- Implemented dual storage system (batch + queue)
+- Added chunked processing for large operations
+- Improved error recovery for failed writes
+- Added storage operation debouncing
+- Enhanced queue processing reliability
+
+### Settings Management
+- Fixed settings recovery mechanism
+- Improved settings validation
+- Added fallback for failed settings loads
+- Enhanced settings synchronization
+- Improved settings persistence
+
+### Error Handling
+- Added comprehensive error logging
+- Improved error recovery flows
+- Enhanced validation checks
+- Added fallback mechanisms
+- Improved error messaging
 
 ## Technical Details
 
