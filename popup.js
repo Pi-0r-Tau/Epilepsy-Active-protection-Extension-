@@ -39,6 +39,28 @@
                 return SENSITIVITY_LABELS[value] || 'Medium';
             }
 
+            function initializeSettings() {
+                chrome.runtime.sendMessage({ type: 'recoveryRequest' }, response => {
+                    if (response?.success && response.settings) {
+                        updateControls(response.settings);
+                        updateStats(response.settings.stats);
+                    } else {
+                        // Fallback to default settings
+                        chrome.storage.sync.get({
+                            threshold: 0.25,
+                            stats: { flashCount: 0, lastDetection: null },
+                            userPreferences: {
+                                lastSensitivity: 3,
+                                highContrast: false
+                            }
+                        }, settings => {
+                            updateControls(settings);
+                            updateStats(settings.stats);
+                        });
+                    }
+                });
+            }
+
             // Initialize settings with fixed protection level
             chrome.storage.sync.get({
                 threshold: 0.25,
@@ -169,27 +191,75 @@
                         controls.sensitivityDisplay.textContent = getSensitivityLabel(value);
                         announceChange(`Sensitivity set to ${controls.sensitivityDisplay.textContent}`);
 
-                        storageQueue.update('threshold', threshold)
-                            .then(() => {
-                                // Notify tabs only after successful storage
-                                chrome.tabs.query({}, (tabs) => {
-                                    tabs.forEach(tab => {
-                                        chrome.tabs.sendMessage(tab.id, {
-                                            type: 'settingsUpdate',
-                                            settings: { threshold, sensitivity: value }
-                                        }).catch(() => {/* Ignore connection errors */});
+                        // Add retry mechanism with backoff
+                        const retryUpdate = async (settings, attempt = 1, maxAttempts = 3) => {
+                            try {
+                                await new Promise((resolve, reject) => {
+                                    chrome.storage.sync.set(settings, () => {
+                                        if (chrome.runtime.lastError) {
+                                            reject(chrome.runtime.lastError);
+                                        } else {
+                                            resolve();
+                                        }
                                     });
                                 });
-                            })
-                            .catch(error => {
-                                console.error('Failed to save settings:', error);
-                                controls.status.textContent = 'Error saving settings';
-                            });
+
+                                // After successful storage update, notify background
+                                chrome.runtime.sendMessage({
+                                    type: 'settingsUpdate',
+                                    settings: settings
+                                });
+
+                                notifyTabs(settings);
+                            } catch (error) {
+                                console.error(`Settings update attempt ${attempt} failed:`, error);
+                                if (attempt < maxAttempts) {
+                                    // Exponential backoff
+                                    const delay = Math.min(1000 * Math.pow(2, attempt), 5000);
+                                    setTimeout(() => retryUpdate(settings, attempt + 1), delay);
+                                } else {
+                                    controls.status.textContent = 'Settings update failed. Please try again.';
+                                    // Force stats refresh to resync
+                                    chrome.runtime.sendMessage({ type: 'statsRequest' });
+                                }
+                            }
+                        };
+
+                        retryUpdate({
+                            threshold: threshold,
+                            userPreferences: {
+                                lastSensitivity: value,
+                                highContrast: controls.highContrast.checked
+                            }
+                        });
                     }
                 } catch (error) {
                     console.error('Error updating setting:', error);
-                    controls.status.textContent = 'Error updating settings';
+                    controls.status.textContent = 'Error updating settings. Please refresh.';
                 }
+            }
+
+            // Add stats refresh mechanism
+            function refreshStats() {
+                chrome.runtime.sendMessage({ type: 'statsRequest' }, response => {
+                    if (response?.success && response.stats) {
+                        updateStats(response.stats);
+                    }
+                });
+            }
+
+            // Add periodic stats refresh
+            setInterval(refreshStats, 5000);
+
+            function notifyTabs(settings) {
+                chrome.tabs.query({}, tabs => {
+                    tabs.forEach(tab => {
+                        chrome.tabs.sendMessage(tab.id, {
+                            type: 'settingsUpdate',
+                            settings: settings
+                        }).catch(() => {/* Ignore connection errors */});
+                    });
+                });
             }
 
             function updateControls(settings) {
@@ -266,6 +336,15 @@
                 return Math.min(Math.max(Number(value), min), max);
             }
 
+        } catch (error) {
+            console.error('[Security] Popup initialization error:', error);
+        }
+    });
+
+    // Initialize with recovery mechanism
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            initializeSettings();
         } catch (error) {
             console.error('[Security] Popup initialization error:', error);
         }
