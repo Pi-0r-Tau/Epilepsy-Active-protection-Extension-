@@ -6,7 +6,7 @@ A browser extension that protects users from harmful flashing content by analyzi
 
 ### Protection Mechanisms
 - Real-time frame analysis (30fps)
-- Near instant flash detection (1ms latency)
+- Near instant flash detection 
 - Automatic blackout response
 - Seek protection with gradual fade
 - YouTube and iframe support
