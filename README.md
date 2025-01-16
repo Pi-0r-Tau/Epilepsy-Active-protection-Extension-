@@ -8,7 +8,7 @@ A browser extension that protects users from harmful flashing content by analyzi
 - Real-time frame analysis (30fps)
 - Near instant flash detection 
 - Automatic blackout response
-- Seek protection with gradual fade
+- Seek protection with gradual fade out
 - YouTube and iframe support
 
 ### User Controls
@@ -267,6 +267,9 @@ if (change > threshold) triggerProtection();
 - Local processing
 - Browser specific
 - Storage limits
+
+## Why make this?
+There are a couple of these published to GitHub however they have been made for Hackathons and have been abandoned since. Moreover, some of these require external server access, where realistically this is not needed in the slightest. I wanted to make something that will continue to be updated, works even offline and requires the least amount of CPU resources to work. It has no external dependencies, makes no calls to external servers and does not store user data or stats.
 
 ## License
 MIT License - Free to use and modify
