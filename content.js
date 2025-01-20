@@ -7,8 +7,8 @@ const FlashProtector = {
         blackoutDuration: 5000, // 5 seconds in milliseconds
         fadeOutDuration: 300,
         overlayOpacity: 0.8,
-        fadeInDuration: 1,    // Quick fade to black in ms
-        fadeOutDuration: 300,   // Slower fade back in ms
+        fadeInDuration: 1,    // Quick fade to black in 1 ms 
+        fadeOutDuration: 300,   // Slower fade back in 300 ms
         storageDebounceTime: 1000, // 1 second between storage updates
         protectionEnabled: true,  // Always enabled
         protectionLevel: 5,      // Always maximum protection
