@@ -253,7 +253,7 @@ if (change > threshold) triggerProtection();
 
 ### Browsers
 - Microsoft Edge (primary)
-
+- Chrome 
 
 ### Video Types
 - HTML5 video elements
