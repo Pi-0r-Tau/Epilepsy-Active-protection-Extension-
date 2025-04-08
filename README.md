@@ -25,6 +25,10 @@ User has the ability to reset stats and when a video is blacked out can see the 
 - Persistent settings
 - Cross-tab protection
 
+### Current issues to fix:
+- Stats counter can cause error of 'Too many requests':
+  Fix is being worked on to pause stats counter, this is the ticker that informs the user of how many flashes that breach the users set threshold have been blocked whilst the video is blacked out.
+
 ## Quick Start
 
 ### Installation
