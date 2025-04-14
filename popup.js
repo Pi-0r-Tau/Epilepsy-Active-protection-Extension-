@@ -1,7 +1,13 @@
 'use strict';
-
+// Sanitize DOM queries and manage user preferences 
 (function() {
-    // Sanitize DOM queries
+    /**
+     * Safely retrieves an element by its ID
+     * If the element is not found, a warning is logged
+     * and a dummy div element is returned
+     * @param {string} id - The ID of the element to retrieve 
+     * @returns {HTMLElement} The retrieved element or a dummy div element
+     */
     function safeGetElement(id) {
         const element = document.getElementById(id);
         if (!element) {
@@ -13,6 +19,19 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         try {
+            /**
+             * @typedef {object} threshold - The threshold control element
+             * @property {HTMLElement} highContrast - The high contrast control element
+             * @property {HTMLElement} sensitivityDisplay - The sensitivity display element
+             * @property {HTMLElement} stats - The status display element
+             * @property {HTMLElement} flashCount - The flash count display element
+             * @property {HTMLElement} lastDetection - The last detection display element
+             * 
+             */
+            /**
+             * * Controls object containing references to various DOM elements
+             * @type {controls}
+             */
             const controls = Object.freeze({
                 threshold: safeGetElement('threshold'),
                 highContrast: safeGetElement('high-contrast'),
@@ -22,10 +41,22 @@
                 lastDetection: safeGetElement('lastDetection')
             });
 
+            /**
+             * User preferences object
+             * @type {object}
+             * @property {boolean} highContrast - Indicates if hight contrast mode is enabled
+             * @property {Number} - lastSensitivity - The last Sensitivity setting
+             */
+
             let userPreferences = {
                 highContrast: false,
                 lastSensitivity: 3
             };
+
+            /**
+             * Sensitivity labels mapping
+             * @type {Object.<number, string>}
+             */
 
             // Add sensitivity labels
             const SENSITIVITY_LABELS = {
@@ -104,7 +135,17 @@
                 });
             });
 
+            /**
+             * Timeout for settings update debounce TODO: Review if needed
+             * @type {number|null}
+             */
+
             let settingsUpdateTimeout = null;
+
+            /**
+             * Debounce delay for settings updates in miliseconds TODO: Fix unused value
+             * @type {number}
+             */
             const DEBOUNCE_DELAY = 50; // 50ms debounce for settings updates
 
             // Global debounce for all storage operations
