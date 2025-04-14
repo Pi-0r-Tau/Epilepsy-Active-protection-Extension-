@@ -1,5 +1,23 @@
 'use strict';
+//FlashProtector configuration and state management 
 const FlashProtector = {
+    /**
+     * Configuration settings for FlashProtector
+     * @type {Object}
+     * @property {number} threshold - The threshold for flash protection
+     * @property {number} frameSampleRate - The rate in which frames are sampled
+     * @property {boolean} debugMode - Flag to enable or disable debug mode
+     * @property {number} blackoutDuration - Duration of blackout in miliseconds
+     * @property {number} fadeOutDuration - Duration of fade out in miliseconds
+     * @property {number} overlayOpacity - Opacity of the overlay
+     * @property {number} fadeInDuration - Duration of fade in of blackout in miliseconds
+     * @property {number} storageDebounceTime - Debounce time for storage updates in miliseconds
+     * @property {boolean} protectionEnabled - Flag to enable or disable protection
+     * @property {number} protectionLevel - Level of protection
+     * @property {number} seekProtectionDuration - Duration of protection after seeking in miliseconds
+     * @property {number} seekFadeOutDuration - Duration of fade out after seeking in miliseconds
+     * 
+     */
     config: {
         threshold: 0.25,
         frameSampleRate: 30,
@@ -15,7 +33,24 @@ const FlashProtector = {
         seekProtectionDuration: 3000, // 3 seconds protection after seeking
         seekFadeOutDuration: 1000    // 1 second fade out if no flashes detected
     },
-
+    /** 
+     * State management for FlashProtector
+     * @type {Object}
+     * @property {number} lastBrightness - The last recorded brightness level
+     * @property {number} lastFrameTime - The timestamp of the last processed frame
+     * @property {HTMLCanvasElement} canvas - The canvas element used for processing
+     * @property {CanvasRenderingContext2D|null} context - The 2D context of the Canvas
+     * @property {WeakSet<HTMLVideoElement>} activeVideos - Set of active video elements
+     * @property {boolean} isIframe - Flag indicating if the script is running in an iframe
+     * @property {WeakMap<HTMLVideoElement>, number} activeTimers - Map of timers for each video element
+     * @property {Object} stats - Statistics related to flash detection
+     * @property {number} stats.flashCount - The count of detected flashes
+     * @property {Date|null} stats.lastDetection - The timestamp of the last detected flash
+     * @property {HTMLElement|null} announcer - The element used for announcements
+     * @property {number} lastStorageUpdate - The timestamp of the last storage update
+     * @property {Object|null} pendingStats - Pending stats to be updated
+     * @property {number} currentSensitivity - The current sensitivity setting
+     */
     state: {
         lastBrightness: 0,
         lastFrameTime: 0,
@@ -128,11 +163,20 @@ const FlashProtector = {
         document.body.appendChild(this.state.announcer);
     },
 
+    /**
+     * Announces a message using the announcer element
+     * @param {string} message - The message to announce
+     */
+
     announce(message) {
         if (this.state.announcer) {
             this.state.announcer.textContent = message;
         }
     },
+    /**
+     * Updates stats display based on flash detection
+     * @param {boolean} [flashDetected=false] - Indicates if a flash was detected
+     */
 
     updateStats(flashDetected = false) {
         if (flashDetected) {
@@ -220,6 +264,12 @@ const FlashProtector = {
             videos.forEach(video => this.protectVideo(video));
         }
     },
+
+    /**
+     * 
+     * @param {HTMLElement} video - The video element to process
+     * @returns {void}
+     */
 
     protectVideo(video) {
         if (!video || this.state.activeVideos.has(video)) return;
@@ -335,7 +385,7 @@ const FlashProtector = {
             window[handlerId] = handleKeyboard;
             video.parentElement.setAttribute('data-keyboard-handler', handlerId);
 
-            // Rest of the protection logic
+            // Protection logic
             let frameCheckHandle;
 
             const stopProtection = () => {
@@ -349,6 +399,12 @@ const FlashProtector = {
 
             const startProtection = () => {
                 let lastAnalysisTime = 0;
+
+                /**
+                 * Checks the brightness of the current video frame
+                 * @param {DOMHighResTimeStamp} timestamp - The current timestamp
+                 * 
+                 */
 
                 const checkFrame = (timestamp) => {
                     if (video.paused || video.ended) {
@@ -387,6 +443,13 @@ const FlashProtector = {
             this.debug('Error protecting video:', error);
         }
     },
+
+    // Triggers a blackout of the video element to protect (aim to protect) against flashes
+    /**
+     * 
+     * @param {HTMLVideoElement} video - The video element to apply the blackout to
+     * 
+     */
 
     triggerBlackout(video) {
         if (!video) return;
@@ -461,10 +524,21 @@ const FlashProtector = {
         });
     },
 
+    /**
+     * Resets the brightness of the video element to normal
+     * @param {HTMLVideoElement} video - The video element to reset
+     */
+
     resetBrightness(video) {
         video.style.filter = 'brightness(1)';
         this.announce('Screen brightness restored');
     },
+
+    /**
+     * Analyzes the brightness of the video element
+     * @param {HTMLVideoElement} video - The video element to analyze
+     * @returns {number} The average brightness of video
+     */
 
     analyzeBrightness(video) {
         if (!this.config.protectionEnabled) return 0;
@@ -507,13 +581,18 @@ const FlashProtector = {
         }
         this.debug('Updated sensitivity applied to active videos');
     },
-
+    /**
+     * Resets the brightness of all active videos
+     */
     resetAllVideos() {
         this.state.activeVideos.forEach(video => {
             this.resetBrightness(video);
         });
     },
-
+    /**
+     * Adjusts the sensitivity of the flash protection
+     * @param {*} change - The change in sensitivity level
+     */
     adjustSensitivity(change) {
         const currentValue = Math.round((0.5 - this.config.threshold) / 0.08);
         const newValue = Math.max(1, Math.min(5, currentValue + (change > 0 ? 1 : -1)));
@@ -528,6 +607,12 @@ const FlashProtector = {
             ['Very Low', 'Low', 'Medium', 'High', 'Very High'][newValue - 1]
         }`);
     },
+
+    /**
+     * Logs debug messages if debug mode is enabled
+     * @param  {...any} args - The messages or objects to log
+     * @returns {void}
+     */
 
     debug(...args) {
         if (this.config.debugMode) {
