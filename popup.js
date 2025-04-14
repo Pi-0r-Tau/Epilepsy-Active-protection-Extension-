@@ -148,11 +148,22 @@
              */
             const DEBOUNCE_DELAY = 50; // 50ms debounce for settings updates
 
-            // Global debounce for all storage operations
+            /**
+             * Global debounce for all storage operations
+             * @type {number|null}
+             */
             let storageDebounceTimer = null;
+            /**
+             * Debounce delay for storage operations in miliseconds
+             * @type {number}
+             */
             const STORAGE_DEBOUNCE_DELAY = 2000; // 2 seconds between storage operations
+            /**
+             * Object to store pending storage updates
+             * @type {Object}
+             */
             let pendingStorageUpdates = {};
-
+            // Batch updates to storage with debounce
             function batchStorageUpdate() {
                 if (Object.keys(pendingStorageUpdates).length === 0) return;
 
@@ -174,10 +185,17 @@
                 }, STORAGE_DEBOUNCE_DELAY);
             }
 
-            // Storage update queue
+            // Storage update queue to manange pending updates and process in chunks
             const storageQueue = {
                 pending: new Map(),
                 processing: false,
+
+                /**
+                 * Adds a storage update to the queue and processes it 
+                 * @param {string} key - The key of the storage item
+                 * @param {*} value - The value of the storage element
+                 * @returns {Promise<void>}
+                 */
 
                 async update(key, value) {
                     return new Promise((resolve, reject) => {
@@ -229,6 +247,11 @@
                 }
             };
 
+            /**
+             * Updates the settins based on the input event
+             * @param {Event} e - The input event
+             */
+
             function updateSetting(e) {
                 try {
                     if (e.target.type === 'range') {
@@ -276,6 +299,10 @@
                 }
             }
 
+            /**
+             * Refreshes the stats by sending a message to the background.js script
+             */
+
             // Add stats refresh mechanism
             function refreshStats() {
                 chrome.runtime.sendMessage({ type: 'statsRequest' }, response => {
@@ -287,6 +314,11 @@
 
             // Add periodic stats refresh
             setInterval(refreshStats, 5000);
+
+            /**
+             * Notifies all tabs about the settings update
+             * @param {Object} settings - The updated settings
+             */
 
             function notifyTabs(settings) {
                 chrome.tabs.query({}, async tabs => {
@@ -323,6 +355,11 @@
                 });
             }
 
+            /**
+             * Updates the controls based on the provided settings
+             * @param {Object} settings - The settings to apply
+             */
+
             function updateControls(settings) {
                 try {
                     const sensitivityValue = Math.round((0.5 - settings.threshold) / 0.08);
@@ -335,6 +372,12 @@
                     controls.status.textContent = 'Error updating display';
                 }
             }
+
+            /**
+             * Updates the stats display based on the provided stats
+             * @param {Object} stats - The stats to display
+             * @returns {void}
+             */
 
             function updateStats(stats) {
                 if (!stats) return;
