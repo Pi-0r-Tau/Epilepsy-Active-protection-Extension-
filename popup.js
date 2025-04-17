@@ -71,6 +71,8 @@
                 return SENSITIVITY_LABELS[value] || SENSITIVITY_LABELS[userPreferences.lastSensitivity];
             }
 
+            // TODO: Fix initializeSettings function
+
             function initializeSettings() {
                 chrome.runtime.sendMessage({ type: 'recoveryRequest' }, response => {
                     if (response?.success && response.settings) {
