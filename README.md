@@ -186,12 +186,6 @@ if (change > threshold) triggerProtection();
 - Developer Mode enabled
 - No external dependencies
 
-### Testing Steps
-1. Load extension
-2. Open video content
-3. Check console logs
-4. Verify protection
-5. Test keyboard shortcuts
 
 ### Common Issues
 - Cross-origin frames
@@ -231,12 +225,6 @@ if (change > threshold) triggerProtection();
 }
 ```
 
-### Security Measures
-- No external communications
-- Sandboxed execution
-- Content isolation
-- Secure storage
-- No cookies used
 
 ### User Control
 - All settings stored locally
@@ -260,11 +248,6 @@ if (change > threshold) triggerProtection();
 - Microsoft Edge (primary)
 - Chrome 
 
-### Video Types
-- HTML5 video elements
-- YouTube players
-- Embedded videos
-- Local media files
 
 ### Known Limitations
 - HTML5 videos only
