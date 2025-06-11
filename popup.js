@@ -1,5 +1,9 @@
 'use strict';
-// Sanitize DOM queries and manage user preferences 
+/**
+ * @description Sanitize DOM queries and manage user preferences
+ * 
+ */
+
 (function() {
     /**
      * Safely retrieves an element by its ID
@@ -250,7 +254,7 @@
             };
 
             /**
-             * Updates the settins based on the input event
+             * Updates the settings based on the input event
              * @param {Event} e - The input event
              */
 
@@ -272,7 +276,7 @@
                             }
                         };
 
-                        // Add to batch for immediate operations
+                        // Adds to batch for immediate operations
                         Object.entries(settings).forEach(([key, value]) => {
                             pendingStorageUpdates[key] = value;
                         });
@@ -338,7 +342,7 @@
                                     }, response => {
                                         clearTimeout(timeout);
                                         if (chrome.runtime.lastError) {
-                                            // Ignore "receiving end does not exist" errors
+                                            // Ignore "receiving end does not exist" errors very annoying
                                             if (!chrome.runtime.lastError.message.includes('Receiving end does not exist')) {
                                                 console.warn(`Tab ${tab.id} message error:`, chrome.runtime.lastError);
                                             }
@@ -347,7 +351,7 @@
                                     });
                                 });
                             } catch (error) {
-                                // Handle timeout or other errors
+                                // Handle timeout
                                 console.warn(`Tab ${tab.id} communication failed:`, error);
                             }
                         }
@@ -408,7 +412,7 @@
                 }, ANNOUNCE_CHANGE_TIMEOUT);
             }
 
-            // Add reset stats functionality
+            // Reset stats functionality
             document.getElementById('resetStats').addEventListener('click', () => {
                 const newStats = { flashCount: 0, lastDetection: null };
                 chrome.storage.sync.set({ stats: newStats });
@@ -417,7 +421,7 @@
             });
 
             // Enhanced message listener with error handling
-            chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+            chrome.runtime.onMessage.addListener((request, _sender, _sendResponse) => {
                 if (request.type === 'statsUpdate') {
                     try {
                         updateStats(request.stats);
@@ -439,7 +443,7 @@
                 document.body.classList.toggle('high-contrast', highContrast);
             });
 
-            // Validate input values
+            // Validate input values TODO: Fix TASK 234
             function validateValue(value, min, max) {
                 return Math.min(Math.max(Number(value), min), max);
             }
