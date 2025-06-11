@@ -1,5 +1,7 @@
 'use strict';
-//FlashProtector configuration and state management 
+/**
+ * @description FlashProtector configuration and state management 
+ */
 const FlashProtector = {
     /**
      * Configuration settings for FlashProtector
@@ -206,7 +208,7 @@ const FlashProtector = {
             this.state.lastStorageUpdate = now;
             this.state.pendingStats = null;
         } else {
-            // Otherwise, schedule update
+            // If not, schedule update
             if (!this.state.pendingStats) {
                 this.state.pendingStats = setTimeout(() => {
                     chrome.storage.sync.set({ stats: this.state.stats });
@@ -225,7 +227,7 @@ const FlashProtector = {
 
     setupYouTubeHandler() {
         this.debug('Setting up YouTube handler');
-        // Monitor for player initialization
+        // Monitor for video player initialization
         const checkForPlayer = setInterval(() => {
             const player = document.querySelector('.html5-video-player');
             if (player) {
@@ -242,7 +244,7 @@ const FlashProtector = {
                     if (node.nodeName === 'VIDEO') {
                         this.protectVideo(node);
                     } else if (node.getElementsByTagName) {
-                        // Convert HTMLCollection to Array before using forEach
+                        // Convert HTMLCollection to Array 
                         Array.from(node.getElementsByTagName('video'))
                             .forEach(video => this.protectVideo(video));
                     }
@@ -257,7 +259,7 @@ const FlashProtector = {
     },
 
     protectExistingVideos() {
-        // Use querySelectorAll instead as it's more reliable
+        // Use querySelectorAll instead of previous as it was better in testing
         const videos = document.querySelectorAll('video');
         if (videos.length > 0) {
             this.debug(`Found ${videos.length} existing videos`);
@@ -283,7 +285,7 @@ const FlashProtector = {
             // Add protection class to video
             video.classList.add('flash-protected-video');
 
-            // Monitor and prevent autoplay attempts
+            // Monitors and prevents autoplay attempts
             const autoplayObserver = new MutationObserver(() => {
                 if (!video.paused) {
                     video.pause();
@@ -302,22 +304,22 @@ const FlashProtector = {
                 return;
             }
 
-            // Add CSS transition for smooth brightness changes
+            // CSS transition for smooth brightness changes
             video.style.transition = 'filter 0.3s ease';
 
             this.state.activeVideos.add(video);
 
-            // Add ARIA attributes for accessibility
+            // ARIA attributes for accessibility
             video.setAttribute('aria-label', 'Protected video with flash detection');
 
-            // Add keyboard shortcut for manual toggle
+            // Keyboard shortcut for manual toggle
             video.parentElement.addEventListener('keydown', (e) => {
                 if (e.altKey && e.key === 'b') {
                     this.triggerBlackout(video);
                 }
             });
 
-            // Enhanced keyboard controls with better event handling
+            // Enhanced keyboard controls for ease of use
             const handleKeyboard = (e) => {
                 // Check if focus is on video or video container
                 const isVideoFocused = document.activeElement === video ||
@@ -356,15 +358,13 @@ const FlashProtector = {
                 }
             };
 
-            // Add keyboard listeners to both video and its container
+            // Keyboard listeners to both video and its container
             video.addEventListener('keydown', handleKeyboard, true);
             video.parentElement.addEventListener('keydown', handleKeyboard, true);
 
-            // Make video and container focusable
+            // Make video and container focusable with styling
             video.tabIndex = 0;
             video.parentElement.tabIndex = 0;
-
-            // Add focus styles
             video.style.outline = 'none';
             video.parentElement.style.outline = 'none';
             video.addEventListener('focus', () => {
@@ -374,7 +374,7 @@ const FlashProtector = {
                 video.style.outline = 'none';
             });
 
-            // Remove existing event listener to prevent duplication
+            // Prevents duplication by removing the existing event listener.
             const existingHandler = video.parentElement.getAttribute('data-keyboard-handler');
             if (existingHandler) {
                 video.parentElement.removeEventListener('keydown', window[existingHandler]);
@@ -387,13 +387,12 @@ const FlashProtector = {
 
             // Protection logic
             let frameCheckHandle;
-
             const stopProtection = () => {
                 if (frameCheckHandle) {
                     cancelAnimationFrame(frameCheckHandle);
                     frameCheckHandle = null;
                 }
-                // Ensure video returns to normal brightness when stopped
+                
                 this.resetBrightness(video);
             };
 
@@ -434,8 +433,6 @@ const FlashProtector = {
             video.addEventListener('play', startProtection);
             video.addEventListener('pause', stopProtection);
             video.addEventListener('ended', stopProtection);
-
-            // Add seek protection
             video.addEventListener('seeking', () => {
                 this.triggerSeekProtection(video);
             });
@@ -454,7 +451,7 @@ const FlashProtector = {
     triggerBlackout(video) {
         if (!video) return;
 
-        // Update stats
+        // Update stats 
         this.updateStats(true);
 
         // Announce flash detection
@@ -470,7 +467,7 @@ const FlashProtector = {
         // Apply blackout
         video.style.filter = 'brightness(0)';
 
-        // Set new timer
+        // Sets a new timer
         const timeoutId = setTimeout(() => {
             video.style.filter = 'brightness(1)';
             this.announce('Screen brightness restored');
@@ -543,7 +540,8 @@ const FlashProtector = {
     analyzeBrightness(video) {
         if (!this.config.protectionEnabled) return 0;
 
-        // Use current sensitivity for threshold adjustment
+        // Use current sensitivity for threshold adjustment 
+        // TASK 233: adjustedThreshold is declared but value is never read
         const adjustedThreshold = this.state.currentSensitivity * (this.config.protectionLevel / 3);
 
         const { canvas, context } = this.state;
