@@ -42,7 +42,8 @@
                 sensitivityDisplay: safeGetElement('sensitivityDisplay'),
                 status: safeGetElement('status'),
                 flashCount: safeGetElement('flashCount'),
-                lastDetection: safeGetElement('lastDetection')
+                lastDetection: safeGetElement('lastDetection'),
+                
             });
 
             /**
@@ -276,7 +277,7 @@
                             }
                         };
 
-                        // Adds to batch for immediate operations
+                        // Add to batch for immediate operations
                         Object.entries(settings).forEach(([key, value]) => {
                             pendingStorageUpdates[key] = value;
                         });

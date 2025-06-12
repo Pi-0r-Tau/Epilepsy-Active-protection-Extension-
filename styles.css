@@ -34,7 +34,7 @@ input[type="range"] {
     text-align: center;
 }
 
-/* High Contrast Mode */
+
 .high-contrast {
     background: #000;
     color: #fff;
@@ -45,7 +45,6 @@ input[type="range"] {
     border: 1px solid #fff;
 }
 
-/* Statistics Styles */
 .stats-container {
     margin-top: 20px;
     padding: 15px;
@@ -88,7 +87,6 @@ input[type="range"] {
     border-bottom: 1px solid #dee2e6;
 }
 
-/* Keyboard Shortcuts */
 .keyboard-shortcuts {
     margin-top: 10px;
     font-size: 0.9em;
@@ -101,7 +99,6 @@ input[type="range"] {
     border: 1px solid #ddd;
 }
 
-/* GitHub Link */
 .footer {
     margin-top: 20px;
     padding: 10px;
@@ -131,7 +128,6 @@ input[type="range"] {
     fill: currentColor;
 }
 
-/* High Contrast Overrides */
 .high-contrast .stats-container {
     background: #222;
     border-color: #444;

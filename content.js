@@ -27,8 +27,8 @@ const FlashProtector = {
         blackoutDuration: 5000, // 5 seconds in milliseconds
         fadeOutDuration: 300,
         overlayOpacity: 0.8,
-        fadeInDuration: 1,    // Quick fade to black in 1 ms 
-        fadeOutDuration: 300,   // Slower fade back in 300 ms
+        fadeInDuration: 1,    // Quick fade to black in ms
+        fadeOutDuration: 300,  // Slower fade back in ms
         storageDebounceTime: 1000, // 1 second between storage updates
         protectionEnabled: true,  // Always enabled
         protectionLevel: 5,      // Always maximum protection
@@ -82,8 +82,6 @@ const FlashProtector = {
 
             this.state.context = this.state.canvas.getContext('2d', { willReadFrequently: true });
             this.state.isIframe = window !== window.top;
-
-            // Create accessibility announcer
             this.createAnnouncer();
 
             // Load settings but enforce maximum protection
@@ -96,7 +94,7 @@ const FlashProtector = {
                 this.config.threshold = 0.5 - (settings.userPreferences.lastSensitivity * 0.08);
             });
 
-            // Enhanced settings listener for real-time updates
+            // Listener for real time updates
             chrome.storage.onChanged.addListener((changes) => {
                 if (changes.threshold) {
                     this.config.threshold = changes.threshold.newValue;
@@ -117,7 +115,7 @@ const FlashProtector = {
             });
 
             // Listen for theme changes
-            chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+            chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
                 if (message.type === 'themeChange') {
                     document.body.classList.toggle('high-contrast', message.highContrast);
                     sendResponse({ success: true });
@@ -128,12 +126,12 @@ const FlashProtector = {
             this.setupMutationObserver();
             this.protectExistingVideos();
 
-            // Special handling for YouTube due to videos in iframes
+            // YouTube to videos in iframes
             if (window.location.hostname.includes('youtube.com')) {
                 this.setupYouTubeHandler();
             }
 
-            // Load existing stats from videos played or being played
+            // Loads existing stats from videos played or being played
             chrome.storage.sync.get(['stats'], (result) => {
                 if (result.stats) {
                     this.state.stats = result.stats;
@@ -175,10 +173,6 @@ const FlashProtector = {
             this.state.announcer.textContent = message;
         }
     },
-    /**
-     * Updates stats display based on flash detection
-     * @param {boolean} [flashDetected=false] - Indicates if a flash was detected
-     */
 
     updateStats(flashDetected = false) {
         if (flashDetected) {
@@ -208,7 +202,7 @@ const FlashProtector = {
             this.state.lastStorageUpdate = now;
             this.state.pendingStats = null;
         } else {
-            // If not, schedule update
+            // If not schedule update
             if (!this.state.pendingStats) {
                 this.state.pendingStats = setTimeout(() => {
                     chrome.storage.sync.set({ stats: this.state.stats });
@@ -244,7 +238,7 @@ const FlashProtector = {
                     if (node.nodeName === 'VIDEO') {
                         this.protectVideo(node);
                     } else if (node.getElementsByTagName) {
-                        // Convert HTMLCollection to Array 
+                        // Convert HTMLCollection to Array before using forEach
                         Array.from(node.getElementsByTagName('video'))
                             .forEach(video => this.protectVideo(video));
                     }
@@ -266,12 +260,6 @@ const FlashProtector = {
             videos.forEach(video => this.protectVideo(video));
         }
     },
-
-    /**
-     * 
-     * @param {HTMLElement} video - The video element to process
-     * @returns {void}
-     */
 
     protectVideo(video) {
         if (!video || this.state.activeVideos.has(video)) return;
@@ -304,7 +292,7 @@ const FlashProtector = {
                 return;
             }
 
-            // CSS transition for smooth brightness changes
+            // Add CSS transition for smooth brightness changes
             video.style.transition = 'filter 0.3s ease';
 
             this.state.activeVideos.add(video);
@@ -312,7 +300,7 @@ const FlashProtector = {
             // ARIA attributes for accessibility
             video.setAttribute('aria-label', 'Protected video with flash detection');
 
-            // Keyboard shortcut for manual toggle
+            // Add keyboard shortcut for manual toggle
             video.parentElement.addEventListener('keydown', (e) => {
                 if (e.altKey && e.key === 'b') {
                     this.triggerBlackout(video);
@@ -361,8 +349,6 @@ const FlashProtector = {
             // Keyboard listeners to both video and its container
             video.addEventListener('keydown', handleKeyboard, true);
             video.parentElement.addEventListener('keydown', handleKeyboard, true);
-
-            // Make video and container focusable with styling
             video.tabIndex = 0;
             video.parentElement.tabIndex = 0;
             video.style.outline = 'none';
@@ -392,7 +378,7 @@ const FlashProtector = {
                     cancelAnimationFrame(frameCheckHandle);
                     frameCheckHandle = null;
                 }
-                
+                // Ensure video returns to normal brightness when stopped
                 this.resetBrightness(video);
             };
 
@@ -433,6 +419,8 @@ const FlashProtector = {
             video.addEventListener('play', startProtection);
             video.addEventListener('pause', stopProtection);
             video.addEventListener('ended', stopProtection);
+
+            // Add seek protection
             video.addEventListener('seeking', () => {
                 this.triggerSeekProtection(video);
             });
@@ -451,7 +439,7 @@ const FlashProtector = {
     triggerBlackout(video) {
         if (!video) return;
 
-        // Update stats 
+        // Update stats
         this.updateStats(true);
 
         // Announce flash detection
@@ -520,11 +508,6 @@ const FlashProtector = {
             startTime: startTime
         });
     },
-
-    /**
-     * Resets the brightness of the video element to normal
-     * @param {HTMLVideoElement} video - The video element to reset
-     */
 
     resetBrightness(video) {
         video.style.filter = 'brightness(1)';

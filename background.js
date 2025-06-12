@@ -1,7 +1,7 @@
 'use strict';
 
 (function() {
-    // Private state
+   
     const state = Object.seal({
         activeTabsProtected: new Set(),
         globalStats: {
