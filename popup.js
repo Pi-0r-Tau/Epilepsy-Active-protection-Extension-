@@ -76,7 +76,7 @@
                 return SENSITIVITY_LABELS[value] || SENSITIVITY_LABELS[userPreferences.lastSensitivity];
             }
 
-            // TODO: Fix initializeSettings function
+            // TASK 349: Fix initializeSettings function
 
             function initializeSettings() {
                 chrome.runtime.sendMessage({ type: 'recoveryRequest' }, response => {
@@ -123,14 +123,14 @@
                 }
             });
 
-            // Apply high contrast mode with persistence
+            // Applys high contrast mode with persistence
             controls.highContrast.addEventListener('change', (e) => {
                 const isHighContrast = e.target.checked;
                 document.body.classList.toggle('high-contrast', isHighContrast);
 
                 userPreferences.highContrast = isHighContrast;
 
-                // Save to storage
+                // Saves to storage
                 chrome.storage.sync.set({ userPreferences });
 
                 // Notify content script
@@ -150,8 +150,9 @@
             let settingsUpdateTimeout = null;
 
             /**
-             * Debounce delay for settings updates in miliseconds TODO: Fix unused value
+             * Debounce delay for settings updates in miliseconds 
              * @type {number}
+             * TASK 348: Fix unused value
              */
             const DEBOUNCE_DELAY = 50; // 50ms debounce for settings updates
 
@@ -215,7 +216,7 @@
                     if (this.processing || this.pending.size === 0) return;
                     this.processing = true;
 
-                    const CHUNK_SIZE = 10; // Process in chunks of 10 items
+                    const CHUNK_SIZE = 10; 
                     const entries = Array.from(this.pending.entries());
                     this.pending.clear();
 
@@ -277,7 +278,7 @@
                             }
                         };
 
-                        // Add to batch for immediate operations
+                        // Batching for immediate operations
                         Object.entries(settings).forEach(([key, value]) => {
                             pendingStorageUpdates[key] = value;
                         });
@@ -286,7 +287,7 @@
                         // Queue in storageQueue for reliability
                         storageQueue.update('settings', settings)
                             .then(() => {
-                                // After successful storage update, notify background
+                                // If successful storage update, notify background
                                 chrome.runtime.sendMessage({
                                     type: 'settingsUpdate',
                                     settings: settings
@@ -310,7 +311,8 @@
              * Refreshes the stats by sending a message to the background.js script
              */
 
-            // Add stats refresh mechanism
+            // Stats refresh 
+            // TASK: 341: Fix issue with stats refresh not working correctly
             function refreshStats() {
                 chrome.runtime.sendMessage({ type: 'statsRequest' }, response => {
                     if (response?.success && response.stats) {
@@ -319,7 +321,7 @@
                 });
             }
 
-            // Add periodic stats refresh
+            // Periodic stats refresh
             setInterval(refreshStats, 5000);
 
             /**
@@ -335,7 +337,7 @@
                                 await new Promise((resolve, reject) => {
                                     const timeout = setTimeout(() => {
                                         reject(new Error('Message timeout'));
-                                    }, 1000); // 1 second timeout
+                                    }, 1000); 
 
                                     chrome.tabs.sendMessage(tab.id, {
                                         type: 'settingsUpdate',
@@ -343,7 +345,7 @@
                                     }, response => {
                                         clearTimeout(timeout);
                                         if (chrome.runtime.lastError) {
-                                            // Ignore "receiving end does not exist" errors very annoying
+                                            // Ignores "receiving end does not exist" errors very annoying
                                             if (!chrome.runtime.lastError.message.includes('Receiving end does not exist')) {
                                                 console.warn(`Tab ${tab.id} message error:`, chrome.runtime.lastError);
                                             }
@@ -396,7 +398,7 @@
                         timeStyle: 'medium'
                     }) : 'Never';
 
-                // Always show active status
+                
                 const protectionStatus = document.getElementById('protectionStatus');
                 if (protectionStatus) {
                     protectionStatus.textContent = 'Active';
@@ -413,7 +415,8 @@
                 }, ANNOUNCE_CHANGE_TIMEOUT);
             }
 
-            // Reset stats functionality
+            // Resets stats functionality
+            // TASK 341 
             document.getElementById('resetStats').addEventListener('click', () => {
                 const newStats = { flashCount: 0, lastDetection: null };
                 chrome.storage.sync.set({ stats: newStats });
@@ -421,7 +424,7 @@
                 announceChange('Statistics reset');
             });
 
-            // Enhanced message listener with error handling
+            // Message listener with error handling
             chrome.runtime.onMessage.addListener((request, _sender, _sendResponse) => {
                 if (request.type === 'statsUpdate') {
                     try {

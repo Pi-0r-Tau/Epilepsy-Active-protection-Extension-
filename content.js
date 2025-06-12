@@ -28,7 +28,6 @@ const FlashProtector = {
         fadeOutDuration: 300,
         overlayOpacity: 0.8,
         fadeInDuration: 1,    // Quick fade to black in ms
-        fadeOutDuration: 300,  // Slower fade back in ms
         storageDebounceTime: 1000, // 1 second between storage updates
         protectionEnabled: true,  // Always enabled
         protectionLevel: 5,      // Always maximum protection
@@ -269,8 +268,6 @@ const FlashProtector = {
             video.autoplay = false;
             video.setAttribute('autoplay', 'false');
             video.pause();
-
-            // Add protection class to video
             video.classList.add('flash-protected-video');
 
             // Monitors and prevents autoplay attempts
@@ -292,7 +289,7 @@ const FlashProtector = {
                 return;
             }
 
-            // Add CSS transition for smooth brightness changes
+            // CSS transition for smooth brightness changes
             video.style.transition = 'filter 0.3s ease';
 
             this.state.activeVideos.add(video);
@@ -300,7 +297,7 @@ const FlashProtector = {
             // ARIA attributes for accessibility
             video.setAttribute('aria-label', 'Protected video with flash detection');
 
-            // Add keyboard shortcut for manual toggle
+            // Adds keyboard shortcut for manual toggle
             video.parentElement.addEventListener('keydown', (e) => {
                 if (e.altKey && e.key === 'b') {
                     this.triggerBlackout(video);
@@ -419,8 +416,6 @@ const FlashProtector = {
             video.addEventListener('play', startProtection);
             video.addEventListener('pause', stopProtection);
             video.addEventListener('ended', stopProtection);
-
-            // Add seek protection
             video.addEventListener('seeking', () => {
                 this.triggerSeekProtection(video);
             });
